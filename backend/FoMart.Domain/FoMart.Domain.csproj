@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Lõi: KHÔNG tham chiếu project hay package nào (CLAUDE.md, Kiến trúc backend). -->
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Chỉ tham chiếu Domain. KHÔNG tham chiếu Infrastructure, KHÔNG dùng EF Core. -->
+  <ItemGroup>
+    <ProjectReference Include="..\FoMart.Domain\FoMart.Domain.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,4 @@
+{
+  // C# Dev Kit: dùng đúng solution của backend thay vì tự sinh solution tạm từ các csproj tìm thấy.
+  "dotnet.defaultSolution": "backend/FoMart.slnx"
+}

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="FoMart.Api/FoMart.Api.csproj" />
+  <Project Path="FoMart.Application/FoMart.Application.csproj" />
+  <Project Path="FoMart.Domain/FoMart.Domain.csproj" />
+  <Project Path="FoMart.Infrastructure/FoMart.Infrastructure.csproj" />
+</Solution>

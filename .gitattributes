@@ -1,0 +1,16 @@
+# Chuẩn hóa xuống dòng: lưu LF trong repo, mỗi máy tự đổi theo hệ điều hành.
+* text=auto
+
+# Script Windows giữ CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Script shell và file chạy trong container giữ LF.
+*.sh  text eol=lf
+docker-compose.yml text eol=lf
+
+# File nhị phân
+*.png binary
+*.jpg binary
+*.ico binary

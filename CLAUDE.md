@@ -1,0 +1,205 @@
+# FoMart – Hệ thống quản lý bán hàng và tồn kho cho tiệm tạp hóa
+
+Dự án cá nhân để đưa vào CV. Web app (PWA) giúp tiệm tạp hóa nhỏ (1–5 người, 300–1.000 mã hàng) quản lý tồn kho theo lô, bán hàng bằng quét mã vạch qua camera điện thoại, và nhập hàng dựa trên dữ liệu bán thực tế.
+
+## Tài liệu (đọc trước khi code)
+
+- `docs/spec.md` – Đặc tả đầy đủ: phạm vi, 11 use case (UC-01…UC-11), quy tắc nghiệp vụ (BR-xx), yêu cầu phi chức năng (NFR-xx), màn hình (SC-xx), thiết kế dữ liệu, lộ trình, công nghệ.
+- `docs/module-workflows.md` – Sơ đồ luồng (Mermaid) cho 6 module: danh mục, nhập hàng, bán hàng, chuyển kho, xuất hủy, kiểm kê.
+- `docs/dev-workflow.md` – Quy trình phát triển, vòng lặp mỗi tính năng, việc cần làm ở giai đoạn 1.
+- `docs/database.md` – Thiết kế database đang áp dụng: sơ đồ ERD, `doc_type`, quy tắc nào ép ở DB/ứng dụng, cách trừ kho, lệnh scaffold.
+- `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database.
+- `database/` – Script SQL là nguồn sự thật của schema (`migrate.ps1`, `migrations/Vxxx__*.sql`, `seed/`).
+
+Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. Nếu thay đổi nghiệp vụ, cập nhật `docs/spec.md` hoặc thêm ADR.
+
+## Công nghệ đã chốt
+
+- Backend: ASP.NET Core Web API trên .NET 10, Clean Architecture với cách tổ chức thư mục/file theo FoMed-API (mục "Kiến trúc backend" bên dưới), EF Core **database-first** (scaffold từ DB, KHÔNG dùng EF Migrations) + SQL viết tay cho trừ kho/FEFO và báo cáo nặng, Repository + Unit of Work, JWT có claim vai trò, CORS, SignalR (giai đoạn 5), Serilog, Swagger, health check. Chi tiết: ADR-0001.
+- Database: SQL Server 2022 chạy bằng Docker khi dev: `docker-compose.yml` (container `fomart-sqlserver`, cổng 14330, collation server `Latin1_General_100_CI_AI`), mật khẩu SA trong `.env` (không commit). Dựng database: `./database/migrate.ps1 -Docker -Seed`. KHÔNG dùng container `azuresqledge` của khóa học cũ.
+- Frontend: Vite + React + TypeScript, `@zxing/browser` hoặc `html5-qrcode`, TanStack Query, Dexie (IndexedDB), `vite-plugin-pwa`, React Hook Form + Zod, React Router, `uuid` (v7).
+- Test: chưa tạo project test ở giai đoạn này. Khi thêm: xUnit + Testcontainers (SQL Server), một project `FoMart.Tests` (phải bổ sung vào cây thư mục bên dưới trước). CI: GitHub Actions.
+
+## Cấu trúc repo
+
+```
+backend/
+database/   (00_create_database.sql, migrations/, seed/, migrate.ps1)
+frontend/
+docs/       (spec.md, database.md, module-workflows.md, dev-workflow.md, adr/)
+docker-compose.yml
+README.md
+```
+
+## Kiến trúc backend (BẮT BUỘC tuân theo)
+
+Clean Architecture, nhưng tên thư mục, tên file và luồng code giống FoMed-API. So với FoMed chỉ dời đúng 3 thứ để đúng chiều phụ thuộc: entity sang `Domain/Entities/`, interface repository và Unit of Work sang `Application/Interfaces/`. Mọi thứ khác giữ như FoMed.
+
+### Chiều phụ thuộc
+
+```
+FoMart.Api ──► FoMart.Infrastructure ──► FoMart.Application ──► FoMart.Domain
+     └──────────────────────────────────────►┘
+```
+
+- `Domain` không tham chiếu project hay package nào (kể cả EF Core).
+- `Application` chỉ tham chiếu `Domain`. KHÔNG tham chiếu `Infrastructure`, KHÔNG dùng EF Core.
+- `Infrastructure` tham chiếu `Application` (để cài đặt interface) và `Domain`.
+- `Api` tham chiếu `Application` + `Infrastructure`; chỉ `Program.cs` được dùng tới kiểu của `Infrastructure` (đăng ký DI).
+
+### Cây thư mục (danh sách ĐÓNG)
+
+Mỗi project chỉ có đúng các thư mục dưới đây. Muốn thêm thư mục mới: sửa mục này trong CLAUDE.md trước. Thư mục trong danh sách nhưng chưa có file nào (ví dụ `Domain/Enums`, `Domain/Rules`, `Authentication/`) thì chỉ tạo khi có file đầu tiên.
+
+```
+backend/
+  FoMart.slnx  global.json  Directory.Build.props  Directory.Packages.props  .config/dotnet-tools.json
+
+  FoMart.Domain/
+    Entities/                   entity scaffold từ DB — KHÔNG sửa tay
+    Enums/                      hằng số trạng thái trùng CHECK trong DB: SaleStatus, DocType, LotKind...
+    Rules/                      quy tắc nghiệp vụ thuần: FefoAllocator, UnitConverter, CountDiffCalculator
+    Exceptions/                 BusinessRuleException
+
+  FoMart.Application/
+    DTO/HTTPResponseData.cs     khuôn phản hồi chung
+    DTO/<Mảng>/                 <ChủĐề>Models.cs, <Mảng>ResponseMessageDTO.cs
+    Interfaces/Repositories/    I<ChủĐề>Repository.cs, IRepositoryBase.cs
+    Interfaces/UnitOfWork/      IUnitOfWork.cs, IWriteScope.cs
+    Interfaces/Authentication/  ITokenService.cs, IPasswordHasher.cs
+    Services/<Mảng>/            <ChủĐề>Service.cs
+
+  FoMart.Infrastructure/
+    DbContext/                  FoMartDbContext.cs (scaffold, KHÔNG sửa tay), FoMartDbContext.Custom.cs (viết tay)
+    Repositories/               RepositoryBase.cs, <ChủĐề>Repository.cs
+    UnitOfWork/                 UnitOfWork.cs, WriteScope.cs
+    Authentication/             JwtTokenService.cs, JwtOptions.cs, BcryptPasswordHasher.cs
+
+  FoMart.Api/
+    Controllers/<Mảng>/         <ChủĐề>Controller.cs
+    Middleware/                 ApiExceptionHandler.cs
+    Properties/launchSettings.json   cổng chạy: http://localhost:5224, https://localhost:7036
+    Program.cs                  đăng ký DI, CORS, auth, Swagger, health check — một chỗ duy nhất
+    appsettings.json, appsettings.Development.json
+```
+
+Quy tắc dễ nhớ: interface ở Application và class cài đặt ở Infrastructure dùng **cùng tên thư mục** (`Repositories/`, `UnitOfWork/`, `Authentication/`): `Application/Interfaces/Repositories/IProductRepository.cs` ↔ `Infrastructure/Repositories/ProductRepository.cs`.
+
+### Mảng (area) và tên file
+
+Mảng là tên thư mục con trong `DTO/`, `Services/`, `Controllers/`. Chủ đề là tên file. Dùng đúng danh sách sau:
+
+| Mảng | Chủ đề | UC |
+| --- | --- | --- |
+| `Auth` | Auth, User | UC-11 |
+| `Store` | Store | UC-11 |
+| `Catalog` | Product, Category, Supplier, Location | UC-01, UC-02 |
+| `Purchasing` | PurchaseOrder, GoodsReceipt | UC-03, UC-04 |
+| `Sales` | Sale | UC-05, UC-06 |
+| `Inventory` | Stock, Transfer, Disposal, StockCount | UC-07, UC-08, UC-09 |
+| `Report` | Report | UC-10 |
+
+Ví dụ: `Application/DTO/Catalog/ProductModels.cs`, `Application/Services/Catalog/ProductService.cs`, `Api/Controllers/Catalog/ProductController.cs`.
+
+| Loại | Quy ước |
+| --- | --- |
+| DTO | `sealed record` trong `<ChủĐề>Models.cs`: `<ChủĐề>Response`, `Create<ChủĐề>Request`, `Update<ChủĐề>Request`, `<ChủĐề>SearchRequest` |
+| Thông báo | `static class <Mảng>ResponseMessageDTO` chứa `const string` tiếng Việt |
+| Phản hồi | Mọi API trả `HTTPResponseData<T>` (`DataResponse`, `Message`, `StatusCode`, `Timestamp`), kể cả khi lỗi |
+| Service | `sealed class <ChủĐề>Service(IUnitOfWork unitOfWork, ...)`, KHÔNG có interface; method `...Async(..., CancellationToken cancellationToken)` trả `Task<HTTPResponseData<T>>`; lỗi nghiệp vụ dự kiến trả `StatusCode` 400/404/409, không ném exception |
+| Controller | `[ApiController] [Route("api/<kebab-số-nhiều>")]`, gọi service rồi `return StatusCode(response.StatusCode, response);`, có `[ProducesResponseType]` |
+| Repository | Một repository cho một chủ đề (bảng cha + bảng con: `ProductRepository` gồm `products`, `product_units`, `price_history`). Interface kế thừa `IRepositoryBase<T>` |
+| Namespace | = tên project + đường dẫn thư mục. Ngoại lệ: mọi controller dùng `FoMart.Api.Controllers` (như FoMed); DbContext dùng `FoMart.Infrastructure` (tránh trùng tên lớp `DbContext`, nên scaffold lại không phải sửa tay) |
+| Comment | Một dòng tiếng Việt phía trên mỗi method public, nói method làm gì |
+
+### Luồng một request
+
+```
+<ChủĐề>Controller ─► <ChủĐề>Service ─► unitOfWork.<ChủĐề>Repository ─► FoMartDbContext
+   (Api)               (Application)     (interface: Application,          (Infrastructure)
+                                          class: Infrastructure)
+```
+
+- Service chỉ truy cập dữ liệu qua `unitOfWork.<ChủĐề>Repository`, không inject repository hay DbContext trực tiếp.
+- `UnitOfWork` tự tạo repository khi được gọi lần đầu (`_x ??= new XRepository(dbContext)`), nên KHÔNG đăng ký repository trong `Program.cs`.
+- Ghi nhiều bảng (nhập hàng, bán hàng, kiểm kê...) phải dùng transaction:
+  ```csharp
+  await using var write = await unitOfWork.BeginWriteAsync(cancellationToken);
+  // ... thao tác qua repository ...
+  await unitOfWork.SaveChangesAsync(cancellationToken);
+  await write.CommitAsync(cancellationToken);
+  ```
+  `BeginWriteAsync` KHÔNG khóa toàn cục (khác FoMed): trừ kho khóa dòng `UPDLOCK, ROWLOCK` trong `StockRepository`.
+- Truy vấn danh sách/báo cáo: method repository trả thẳng DTO của `Application/DTO` (projection `Select`, `AsNoTracking`, hoặc SQL viết tay). Không tạo tầng query riêng.
+- Map entity ↔ DTO bằng tay trong service (method `private static Map(...)`).
+- Quy tắc nghiệp vụ thuần (FEFO, quy đổi đơn vị, chênh lệch kiểm kê) viết ở `Domain/Rules`; vi phạm thì ném `BusinessRuleException`, `ApiExceptionHandler` đổi thành `HTTPResponseData` 409.
+- `ApiExceptionHandler` là lưới an toàn: đổi lỗi SQL (2601/2627 trùng, 547 ràng buộc, 50001/50002 trigger, 1205 deadlock) và `DbUpdateConcurrencyException` thành `HTTPResponseData` 409.
+
+### Thêm một chủ đề mới (ví dụ Product)
+
+1. `Application/DTO/Catalog/ProductModels.cs` (+ thông báo vào `CatalogResponseMessageDTO.cs`)
+2. `Application/Interfaces/Repositories/IProductRepository.cs` → thêm property vào `IUnitOfWork.cs`
+3. `Infrastructure/Repositories/ProductRepository.cs` → thêm field + property vào `UnitOfWork.cs`
+4. `Application/Services/Catalog/ProductService.cs`
+5. `Api/Controllers/Catalog/ProductController.cs`
+6. `Program.cs`: thêm `builder.Services.AddScoped<ProductService>();`
+
+### Program.cs và CORS
+
+- Đăng ký DI chỉ ở `Program.cs`, chia khối có comment: Database, Unit of Work, Authentication, Services, CORS, API.
+- CORS: một policy tên `"Frontend"`, danh sách origin đọc từ `Cors:AllowedOrigins` trong appsettings. KHÔNG `AllowAnyOrigin()` ở production; không cần `AllowCredentials()` (JWT gửi qua header). CORS không thay cho kiểm tra quyền ở server (NFR-09).
+
+### KHÔNG được dùng (muốn dùng phải sửa mục này và ghi ADR trước)
+
+MediatR, CQRS, AutoMapper, microservices, event sourcing, file `DependencyInjection.cs` riêng từng project, inject `IRepositoryBase<T>`/DbContext thẳng vào service, interface cho service, khuôn phản hồi khác `HTTPResponseData<T>` (kể cả ProblemDetails), thư mục ngoài danh sách đóng ở trên.
+
+## Database-first
+
+- Đổi schema = thêm file `database/migrations/V00x__mo_ta.sql` mới (một transaction), chạy `database/migrate.ps1`, rồi scaffold lại (lệnh ở `docs/database.md` mục 6). Không sửa file migration đã áp dụng.
+- Scaffold: entity vào `FoMart.Domain/Entities` (namespace `FoMart.Domain.Entities`), DbContext vào `FoMart.Infrastructure/DbContext` (namespace `FoMart.Infrastructure`). KHÔNG sửa tay file scaffold; cấu hình EF bổ sung viết ở `FoMartDbContext.Custom.cs` qua `OnModelCreatingPartial`.
+
+## Các quyết định nghiệp vụ đã chốt
+
+1. Không cố định thiết bị: điện thoại có camera là tối thiểu; hỗ trợ thêm máy quét USB/Bluetooth dạng bàn phím. Mọi nguồn quét quy về một sự kiện "đã nhận mã X".
+2. Tồn kho tính theo **đơn vị cơ sở** (lon). Đơn vị khác (lốc, thùng) có hệ số quy đổi nguyên dương và giá bán riêng.
+3. Ghi nhận bán theo "phương án C": bán nhanh có ghi nhận + xuất hủy cho hư hỏng đã biết + kiểm kê định kỳ bù sai lệch chưa biết.
+4. Thanh toán tiền mặt hoặc chuyển khoản VietQR, nhân viên tự xác nhận (không tích hợp ngân hàng).
+5. Một hệ thống phục vụ cả tiệm truyền thống (1 người, 1 vị trí) lẫn minimart (nhiều nhân viên, kho sau + kệ) bằng cấu hình.
+
+## Quy tắc lõi KHÔNG được vi phạm
+
+- **BR-02:** Mọi thay đổi tồn kho phải đi qua một chứng từ và ghi vào `stock_moves`. Không bao giờ sửa trực tiếp `stock.qty`: trigger `TR_stock_moves_apply` tự cộng vào `stock`, role `fomart_app` bị DENY ghi `stock`.
+- `stock_moves` chỉ thêm, không sửa, không xóa. Tổng `qty_change` theo (lot, location) luôn bằng `stock.qty`.
+- **BR-03:** Chứng từ đã hoàn tất không sửa; hủy bằng chứng từ đảo ngược.
+- **BR-04:** Trừ kho theo FEFO (có hạn dùng) hoặc FIFO (không hạn dùng).
+- **BR-01:** Bán hàng KHÔNG bị chặn khi tồn không đủ; cho phép âm tạm thời, đánh dấu sản phẩm "cần kiểm kê". (Chuyển kho thì chặn.) Kệ chưa từng có lô của sản phẩm thì trừ vào lô tạm (`lots.kind = provisional`, giá vốn NULL).
+- Không cho sửa/giảm giá trên giỏ ở phiên bản 1; `sale_lines.unit_price` là snapshot giá đơn vị.
+- **BR-06/07:** Giá vốn lấy theo lô bị trừ; giá bán lưu snapshot trên hóa đơn.
+- **BR-11:** Giá vốn lưu DECIMAL(14,4) theo đơn vị cơ sở; tiền trên hóa đơn và doanh thu là số nguyên (đồng).
+- **BR-12:** Không sửa hệ số quy đổi/đơn vị cơ sở khi đã có giao dịch.
+- Trừ kho luôn chạy trong một transaction, khóa dòng (`UPDLOCK, ROWLOCK`) hoặc `rowversion` (NFR-06).
+
+## Lưu ý kỹ thuật SQL Server
+
+- Mã vạch nullable nhưng duy nhất → filtered unique index `WHERE barcode IS NOT NULL`. Mỗi sản phẩm đúng một đơn vị cơ sở → filtered unique index `WHERE is_base = 1`.
+- Collation cả database `Latin1_General_100_CI_AI` (tìm không dấu cả ư/ơ/đ). KHÔNG dùng `Vietnamese_CI_AI` (chỉ bỏ dấu thanh). Bảng `#temp` khai báo `COLLATE DATABASE_DEFAULT`.
+- Id hóa đơn sinh trên client bằng UUID v7 (`uniqueidentifier`), để đồng bộ offline không trùng; .NET dùng `Guid.CreateVersion7()`. Là PK nonclustered; khóa cụm là `seq` IDENTITY (SQL Server không sắp GUID theo byte đầu).
+- Tiền `BIGINT` (đồng), giá vốn `DECIMAL(14,4)`, trạng thái `VARCHAR` + CHECK, thời điểm `DATETIME2(3)` UTC. Database bật `READ_COMMITTED_SNAPSHOT`.
+- Bảng có trigger (`stock_moves`, `product_units`) phải có `HasTrigger(...)` trong EF (scaffold EF Core 10 tự sinh).
+- Script SQL viết bằng T-SQL thuần (không biến sqlcmd `$(...)`) để chạy được thẳng trong VS Code/SSMS.
+
+## Quy ước
+
+- Code, tên bảng, tên biến bằng tiếng Anh; UI, comment và tài liệu bằng tiếng Việt.
+- Tiền hiển thị dạng `18.000đ`, ngày `dd/mm/yyyy`, múi giờ Việt Nam.
+- Commit theo Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`…). `main` luôn chạy được; làm trên branch `feature/...`, merge qua PR.
+- Quy tắc nghiệp vụ (FEFO, quy đổi đơn vị, chênh lệch kiểm kê) để thuần trong `Domain/Rules` để khi có project test là viết unit test được ngay.
+- Không commit secret (dùng User Secrets / biến môi trường).
+- Camera trên điện thoại chỉ chạy qua HTTPS: dùng `@vitejs/plugin-basic-ssl` hoặc tunnel khi test.
+- Package NuGet khai báo phiên bản ở `Directory.Packages.props`; chọn bản cho .NET 10 (không lấy bản 11.x) và đã phát hành ít nhất 2 tuần.
+
+## Trạng thái hiện tại
+
+Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Chưa có frontend. Bước tiếp theo: Giai đoạn 1 trong `docs/dev-workflow.md`.
+
+Vấn đề còn mở (spec mục 11.2): xử lý tồn âm khi đồng bộ hóa đơn offline đến trễ; nguồn dữ liệu ban đầu (Excel hay khai báo dần); tồn đầu kỳ (schema đã hỗ trợ phiếu kiểm kê `scope_type = full` có `adjust_unit_cost`).
