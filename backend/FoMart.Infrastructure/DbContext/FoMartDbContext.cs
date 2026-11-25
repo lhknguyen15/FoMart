@@ -328,7 +328,7 @@ public partial class FoMartDbContext : DbContext
 
             entity.HasIndex(e => new { e.Id, e.ProductId }, "UQ_lots_id_product").IsUnique();
 
-            entity.HasIndex(e => e.ProductId, "UX_lots_provisional")
+            entity.HasIndex(e => new { e.ProductId, e.Kind }, "UX_lots_provisional")
                 .IsUnique()
                 .HasFilter("([kind]='provisional')");
 
@@ -354,8 +354,8 @@ public partial class FoMartDbContext : DbContext
                 .HasColumnType("decimal(14, 4)")
                 .HasColumnName("unit_cost");
 
-            entity.HasOne(d => d.Product).WithOne(p => p.Lot)
-                .HasForeignKey<Lot>(d => d.ProductId)
+            entity.HasOne(d => d.Product).WithMany(p => p.Lots)
+                .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_lots_product");
         });
@@ -459,11 +459,11 @@ public partial class FoMartDbContext : DbContext
                 .IsUnique()
                 .HasFilter("([barcode] IS NOT NULL)");
 
-            entity.HasIndex(e => e.ProductId, "UX_product_units_base")
+            entity.HasIndex(e => new { e.ProductId, e.IsBase }, "UX_product_units_base")
                 .IsUnique()
                 .HasFilter("([is_base]=(1))");
 
-            entity.HasIndex(e => e.ProductId, "UX_product_units_default_purchase")
+            entity.HasIndex(e => new { e.ProductId, e.IsDefaultPurchase }, "UX_product_units_default_purchase")
                 .IsUnique()
                 .HasFilter("([is_default_purchase]=(1))");
 
@@ -495,8 +495,8 @@ public partial class FoMartDbContext : DbContext
                 .HasPrecision(3)
                 .HasColumnName("updated_at");
 
-            entity.HasOne(d => d.Product).WithOne(p => p.ProductUnit)
-                .HasForeignKey<ProductUnit>(d => d.ProductId)
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductUnits)
+                .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_product_units_product");
         });

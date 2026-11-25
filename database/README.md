@@ -7,6 +7,7 @@ Schema của FoMart theo hướng database-first. Thiết kế nằm ở [docs/d
 | `00_create_database.sql` | Tạo database (collation `Latin1_General_100_CI_AI`), bật `READ_COMMITTED_SNAPSHOT`. T-SQL thuần, chạy thẳng trên master được; tên database ở biến `@DatabaseName` |
 | `migrations/V001__initial_schema.sql` | Schema, sequence, index, trigger, view, role `fomart_app` |
 | `migrations/V002__required_data.sql` | Cấu hình cửa hàng và vị trí "Kệ bán" mặc định |
+| `migrations/V003__fix_filtered_unique_indexes.sql` | Sửa 3 filtered unique index để EF scaffold đúng quan hệ một-nhiều (`Product.ProductUnits`, `Product.Lots`) |
 | `seed/dev_sample_data.sql` | Dữ liệu mẫu dev: 2 tài khoản, 5 sản phẩm, 1 phiếu nhập đã hoàn tất |
 | `migrate.ps1` | Chạy các migration chưa áp dụng theo thứ tự, kiểm checksum |
 

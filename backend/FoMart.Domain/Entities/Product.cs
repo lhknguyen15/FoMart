@@ -45,9 +45,9 @@ public partial class Product
 
     public virtual ICollection<DisposalLine> DisposalLines { get; set; } = new List<DisposalLine>();
 
-    public virtual Lot? Lot { get; set; }
+    public virtual ICollection<Lot> Lots { get; set; } = new List<Lot>();
 
-    public virtual ProductUnit? ProductUnit { get; set; }
+    public virtual ICollection<ProductUnit> ProductUnits { get; set; } = new List<ProductUnit>();
 
     public virtual ICollection<TransferLine> TransferLines { get; set; } = new List<TransferLine>();
 }
