@@ -15,7 +15,7 @@
 4. Nếu cần đổi schema: thêm `database/migrations/V00x__*.sql`, chạy `migrate.ps1`, scaffold lại EF. Rồi code backend (Domain → Application → Infrastructure → API), thử trên Swagger.
 5. Code frontend cho màn hình tương ứng.
 6. Thử tay trên điện thoại thật, nhất là màn hình có quét mã.
-7. Branch → Pull Request → tự đọc lại diff → merge. `main` luôn chạy được.
+7. Nhánh `feature/<mảng>-<mô-tả>` tách từ `develop` → Pull Request về `develop` → tự đọc lại diff → Squash and merge. Cuối giai đoạn: PR `develop` → `main` và gắn tag (chi tiết: CLAUDE.md, mục "Git flow").
 8. Cập nhật spec hoặc thêm ADR nếu đổi ý về nghiệp vụ/kỹ thuật.
 
 ## Lộ trình (spec mục 10)
