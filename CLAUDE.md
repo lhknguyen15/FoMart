@@ -192,11 +192,30 @@ MediatR, CQRS, AutoMapper, microservices, event sourcing, file `DependencyInject
 
 - Code, tên bảng, tên biến bằng tiếng Anh; UI, comment và tài liệu bằng tiếng Việt.
 - Tiền hiển thị dạng `18.000đ`, ngày `dd/mm/yyyy`, múi giờ Việt Nam.
-- Commit theo Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`…). `main` luôn chạy được; làm trên branch `feature/...`, merge qua PR.
+- Commit theo Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`…). Quy trình nhánh: mục "Git flow" bên dưới.
 - Quy tắc nghiệp vụ (FEFO, quy đổi đơn vị, chênh lệch kiểm kê) để thuần trong `Domain/Rules` để khi có project test là viết unit test được ngay.
 - Không commit secret (dùng User Secrets / biến môi trường).
 - Camera trên điện thoại chỉ chạy qua HTTPS: dùng `@vitejs/plugin-basic-ssl` hoặc tunnel khi test.
 - Package NuGet khai báo phiên bản ở `Directory.Packages.props`; chọn bản cho .NET 10 (không lấy bản 11.x) và đã phát hành ít nhất 2 tuần.
+
+## Git flow
+
+Repo: https://github.com/lhknguyen15/FoMart. Mô hình Git Flow rút gọn (không có nhánh `release/*`).
+
+| Nhánh | Tách từ | Merge vào | Dùng cho |
+| --- | --- | --- | --- |
+| `main` | | | Bản ổn định. Chỉ nhận merge từ `develop` (cuối mỗi giai đoạn) hoặc `hotfix/*`. Gắn tag `v0.<giai đoạn>.0` |
+| `develop` | `main` | `main` | Nơi gộp tính năng; luôn build được. Nhánh mặc định trên GitHub |
+| `feature/<mảng>-<mô-tả>` | `develop` | `develop` | Một tính năng/issue, ví dụ `feature/catalog-product-api`, `feature/auth-jwt` |
+| `fix/<mô-tả>` | `develop` | `develop` | Sửa lỗi chưa lên `main` |
+| `hotfix/<mô-tả>` | `main` | `main` rồi `develop` | Sửa gấp lỗi trên bản ổn định |
+
+- KHÔNG commit thẳng vào `main` hay `develop`; mọi thay đổi đi qua Pull Request.
+- Tên nhánh: chữ thường, gạch ngang, tiếng Anh; `<mảng>` lấy theo bảng Mảng ở trên (`catalog`, `auth`, `sales`...). Docs/chore nhỏ đi kèm tính năng thì nằm trong nhánh feature đó.
+- PR `feature/*` → `develop`: **Squash and merge**, tiêu đề PR theo Conventional Commits (thành commit trên `develop`), mô tả ghi UC/BR liên quan. Trước khi mở PR: build 0 lỗi 0 cảnh báo, chạy thử trên Swagger. Merge xong xóa nhánh.
+- Phát hành cuối giai đoạn: PR `develop` → `main` bằng **Create a merge commit**, rồi tag `v0.1.0`, `v0.2.0`...
+- Hotfix: PR `hotfix/*` → `main`, tag bản vá (`v0.1.1`), rồi merge `main` ngược về `develop`.
+- Bắt đầu việc mới: `git switch develop && git pull && git switch -c feature/<mảng>-<mô-tả>`.
 
 ## Trạng thái hiện tại
 
