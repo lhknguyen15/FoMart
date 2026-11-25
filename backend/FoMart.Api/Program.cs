@@ -2,6 +2,7 @@ using System.Globalization;
 using FoMart.Api.Middleware;
 using FoMart.Application.DTO;
 using FoMart.Application.Interfaces.UnitOfWork;
+using FoMart.Application.Services.Catalog;
 using FoMart.Application.Services.Store;
 using FoMart.Infrastructure;
 using FoMart.Infrastructure.UnitOfWork;
@@ -34,6 +35,10 @@ try
 
     // ---------- Services (mỗi chủ đề một dòng) ----------
     builder.Services.AddScoped<StoreService>();
+    builder.Services.AddScoped<ProductService>();
+    builder.Services.AddScoped<CategoryService>();
+    builder.Services.AddScoped<SupplierService>();
+    builder.Services.AddScoped<LocationService>();
 
     // ---------- CORS ----------
     // Origin được phép đọc từ Cors:AllowedOrigins. Không AllowAnyOrigin; JWT gửi qua header nên không cần AllowCredentials.
@@ -61,8 +66,9 @@ try
 
     var app = builder.Build();
 
-    app.UseExceptionHandler();
+    // Ghi log request bọc ngoài ExceptionHandler để log đúng mã trả về cuối cùng (409 chứ không phải 500).
     app.UseSerilogRequestLogging();
+    app.UseExceptionHandler();
 
     if (app.Environment.IsDevelopment())
     {
@@ -71,6 +77,11 @@ try
     }
 
     app.UseCors("Frontend");
+
+    // TẠM THỜI tới khi có JWT: gắn user giả lập cho request ở Development (Middleware/DevelopmentUserMiddleware.cs).
+    if (app.Environment.IsDevelopment())
+        app.UseMiddleware<DevelopmentUserMiddleware>();
+
     app.UseAuthorization();
     app.MapControllers();
     app.MapHealthChecks("/health");

@@ -62,7 +62,8 @@ backend/
     Exceptions/                 BusinessRuleException
 
   FoMart.Application/
-    DTO/HTTPResponseData.cs     khuôn phản hồi chung
+    DTO/HTTPResponseData.cs     khuôn phản hồi chung + HTTPResponse.Success/Fail để tạo nhanh trong Service
+    DTO/PagedResult.cs          khuôn phân trang chung (Items, Page, PageSize, TotalCount, TotalPages)
     DTO/<Mảng>/                 <ChủĐề>Models.cs, <Mảng>ResponseMessageDTO.cs
     Interfaces/Repositories/    I<ChủĐề>Repository.cs, IRepositoryBase.cs
     Interfaces/UnitOfWork/      IUnitOfWork.cs, IWriteScope.cs
@@ -78,6 +79,7 @@ backend/
   FoMart.Api/
     Controllers/<Mảng>/         <ChủĐề>Controller.cs
     Middleware/                 ApiExceptionHandler.cs
+                                DevelopmentUserMiddleware.cs — TẠM THỜI tới khi có JWT: gắn user giả lập (DevelopmentUser:UserId) ở Development; XÓA khi làm xong Auth
     Properties/launchSettings.json   cổng chạy: http://localhost:5224, https://localhost:7036
     Program.cs                  đăng ký DI, CORS, auth, Swagger, health check — một chỗ duy nhất
     appsettings.json, appsettings.Development.json
@@ -187,6 +189,8 @@ MediatR, CQRS, AutoMapper, microservices, event sourcing, file `DependencyInject
 - Tiền `BIGINT` (đồng), giá vốn `DECIMAL(14,4)`, trạng thái `VARCHAR` + CHECK, thời điểm `DATETIME2(3)` UTC. Database bật `READ_COMMITTED_SNAPSHOT`.
 - Bảng có trigger (`stock_moves`, `product_units`) phải có `HasTrigger(...)` trong EF (scaffold EF Core 10 tự sinh).
 - Script SQL viết bằng T-SQL thuần (không biến sqlcmd `$(...)`) để chạy được thẳng trong VS Code/SSMS.
+- Filtered unique index KHÔNG được chỉ gồm đúng cột khóa ngoại (ví dụ `(product_id) WHERE is_base = 1`): EF bỏ qua bộ lọc và scaffold thành quan hệ một-một. Thêm cột của điều kiện vào khóa: `(product_id, is_base) WHERE is_base = 1` (xem V003).
+- EF Core 10 luôn đưa cột `bool` vào câu INSERT, nên DEFAULT của database (ví dụ `is_active DEFAULT 1`) KHÔNG có tác dụng: khi tạo entity mới phải gán tường minh `IsActive = true` (và mọi cột bool có default khác `false`).
 
 ## Quy ước
 
@@ -219,6 +223,6 @@ Repo: https://github.com/lhknguyen15/FoMart. Mô hình Git Flow rút gọn (khô
 
 ## Trạng thái hiện tại
 
-Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Chưa có frontend. Bước tiếp theo: Giai đoạn 1 trong `docs/dev-workflow.md`.
+Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Mảng Catalog xong API (UC-01, UC-02): `api/products` (tìm, chi tiết, tra mã vạch, tạo/sửa, thêm/sửa đơn vị), `api/categories`, `api/suppliers`, `api/locations`; quy tắc ở `Domain/Rules/ProductUnitRules.cs`. Chưa có Auth: ghi dữ liệu dùng user giả lập của `DevelopmentUserMiddleware`. Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Chưa có frontend. Bước tiếp theo: Giai đoạn 1 trong `docs/dev-workflow.md`.
 
 Vấn đề còn mở (spec mục 11.2): xử lý tồn âm khi đồng bộ hóa đơn offline đến trễ; nguồn dữ liệu ban đầu (Excel hay khai báo dần); tồn đầu kỳ (schema đã hỗ trợ phiếu kiểm kê `scope_type = full` có `adjust_unit_cost`).
