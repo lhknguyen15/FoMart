@@ -1,12 +1,16 @@
 using FoMart.Application.DTO;
 using FoMart.Application.DTO.Catalog;
 using FoMart.Application.Services.Catalog;
+using FoMart.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoMart.Api.Controllers;
 
 [ApiController]
 [Route("api/suppliers")]
+[ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status403Forbidden)]
 public sealed class SupplierController(SupplierService supplierService) : ControllerBase
 {
     // Tìm nhà cung cấp theo tên (không dấu) hoặc số điện thoại.
@@ -31,6 +35,7 @@ public sealed class SupplierController(SupplierService supplierService) : Contro
 
     // Tạo nhà cung cấp.
     [HttpPost]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<SupplierResponse?>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(HTTPResponseData<SupplierResponse?>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HTTPResponseData<SupplierResponse?>>> Create(
@@ -42,6 +47,7 @@ public sealed class SupplierController(SupplierService supplierService) : Contro
 
     // Sửa nhà cung cấp; IsActive = false để ẩn.
     [HttpPut("{id:int}")]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<SupplierResponse?>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HTTPResponseData<SupplierResponse?>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HTTPResponseData<SupplierResponse?>>> Update(

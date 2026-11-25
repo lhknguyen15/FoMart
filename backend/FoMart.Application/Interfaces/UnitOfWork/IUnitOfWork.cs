@@ -8,6 +8,8 @@ public interface IUnitOfWork
 {
     IStoreRepository StoreRepository { get; }
 
+    IUserRepository UserRepository { get; }
+
     IProductRepository ProductRepository { get; }
 
     ICategoryRepository CategoryRepository { get; }
