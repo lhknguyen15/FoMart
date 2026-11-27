@@ -1,14 +1,18 @@
 using System.Globalization;
-using System.Security.Claims;
 using FoMart.Application.DTO;
 using FoMart.Application.DTO.Catalog;
 using FoMart.Application.Services.Catalog;
+using FoMart.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace FoMart.Api.Controllers;
 
 [ApiController]
 [Route("api/products")]
+[ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status403Forbidden)]
 public sealed class ProductController(ProductService productService) : ControllerBase
 {
     // Tìm sản phẩm theo tên (không dấu) hoặc mã vạch, lọc nhóm hàng, trạng thái; có phân trang.
@@ -44,6 +48,7 @@ public sealed class ProductController(ProductService productService) : Controlle
 
     // Tạo sản phẩm kèm các đơn vị (đúng một đơn vị cơ sở).
     [HttpPost]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status401Unauthorized)]
@@ -59,6 +64,7 @@ public sealed class ProductController(ProductService productService) : Controlle
 
     // Sửa thông tin chung; Status = inactive để ngừng bán.
     [HttpPut("{id:int}")]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status404NotFound)]
@@ -72,6 +78,7 @@ public sealed class ProductController(ProductService productService) : Controlle
 
     // Thêm một đơn vị (lốc, thùng...) cho sản phẩm.
     [HttpPost("{id:int}/units")]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status404NotFound)]
@@ -87,6 +94,7 @@ public sealed class ProductController(ProductService productService) : Controlle
 
     // Sửa một đơn vị: tên, mã vạch, giá (ghi lịch sử giá), hệ số (khóa khi đã có giao dịch).
     [HttpPut("{id:int}/units/{unitId:int}")]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(HTTPResponseData<ProductResponse?>), StatusCodes.Status401Unauthorized)]
@@ -101,9 +109,9 @@ public sealed class ProductController(ProductService productService) : Controlle
         return StatusCode(response.StatusCode, response);
     }
 
-    // Id người dùng hiện tại lấy từ claim; null nếu chưa đăng nhập.
+    // Id người dùng hiện tại lấy từ claim "sub" của JWT; null nếu không có.
     private int? GetCurrentUserId() =>
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+        int.TryParse(User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
             ? id
             : null;
 

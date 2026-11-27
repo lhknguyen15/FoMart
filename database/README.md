@@ -27,6 +27,12 @@ Chuỗi kết nối cho API (đặt bằng User Secrets, không ghi vào `appset
 Server=localhost,14330;Database=FoMart;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True
 ```
 
+Khóa ký JWT cho API (một lần, chuỗi ngẫu nhiên ≥ 32 ký tự):
+
+```powershell
+dotnet user-secrets set "Jwt:SigningKey" "<chuỗi ngẫu nhiên dài>" --project backend/FoMart.Api
+```
+
 Dùng SQL Server cài trên Windows thay cho Docker: `./database/migrate.ps1 -Seed` (Windows auth), hoặc `-Server ... -User ... -Password ...`.
 
 Làm lại database từ đầu: `docker compose down -v` (xóa cả volume dữ liệu), rồi `up -d` và migrate lại.

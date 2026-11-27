@@ -10,6 +10,7 @@ Dự án cá nhân để đưa vào CV. Web app (PWA) giúp tiệm tạp hóa nh
 - `docs/database.md` – Thiết kế database đang áp dụng: sơ đồ ERD, `doc_type`, quy tắc nào ép ở DB/ứng dụng, cách trừ kho, lệnh scaffold.
 - `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database.
 - `database/` – Script SQL là nguồn sự thật của schema (`migrate.ps1`, `migrations/Vxxx__*.sql`, `seed/`).
+- `docs/module-notes/` – Ghi chú từng mảng đã làm: file/thư mục đã tạo, API, quyết định, lỗi đã gặp, hạn chế, cách test. Đọc trước khi sửa một mảng có sẵn.
 
 Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. Nếu thay đổi nghiệp vụ, cập nhật `docs/spec.md` hoặc thêm ADR.
 
@@ -26,7 +27,7 @@ Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. N�
 backend/
 database/   (00_create_database.sql, migrations/, seed/, migrate.ps1)
 frontend/
-docs/       (spec.md, database.md, module-workflows.md, dev-workflow.md, adr/)
+docs/       (spec.md, database.md, module-workflows.md, dev-workflow.md, adr/, module-notes/)
 docker-compose.yml
 README.md
 ```
@@ -79,7 +80,6 @@ backend/
   FoMart.Api/
     Controllers/<Mảng>/         <ChủĐề>Controller.cs
     Middleware/                 ApiExceptionHandler.cs
-                                DevelopmentUserMiddleware.cs — TẠM THỜI tới khi có JWT: gắn user giả lập (DevelopmentUser:UserId) ở Development; XÓA khi làm xong Auth
     Properties/launchSettings.json   cổng chạy: http://localhost:5224, https://localhost:7036
     Program.cs                  đăng ký DI, CORS, auth, Swagger, health check — một chỗ duy nhất
     appsettings.json, appsettings.Development.json
@@ -151,9 +151,32 @@ Ví dụ: `Application/DTO/Catalog/ProductModels.cs`, `Application/Services/Cata
 - Đăng ký DI chỉ ở `Program.cs`, chia khối có comment: Database, Unit of Work, Authentication, Services, CORS, API.
 - CORS: một policy tên `"Frontend"`, danh sách origin đọc từ `Cors:AllowedOrigins` trong appsettings. KHÔNG `AllowAnyOrigin()` ở production; không cần `AllowCredentials()` (JWT gửi qua header). CORS không thay cho kiểm tra quyền ở server (NFR-09).
 
+### Xác thực và phân quyền
+
+- JWT (HMAC-SHA256): claim `sub` = id người dùng, `name`, `role` (`owner` | `staff`, hằng số ở `Domain/Enums/UserRole.cs`). Access token 30 phút, refresh token 7 ngày, xoay vòng mỗi lần refresh; dùng lại refresh token đã thu hồi thì thu hồi mọi phiên của người dùng đó.
+- Mặc định MỌI endpoint phải đăng nhập (fallback policy). Endpoint công khai đánh dấu `[AllowAnonymous]` (hiện có: `/api/auth/setup|login|login-pin|refresh`, `GET /api/stores`, `/health`, `/openapi`).
+- Thao tác chỉ chủ tiệm: `[Authorize(Roles = UserRole.Owner)]` trên action (hoặc cả controller như `UserController`). Phân quyền luôn kiểm ở server (NFR-09).
+- Controller cần người dùng hiện tại thì có method `private int? GetCurrentUserId()` đọc claim `JwtRegisteredClaimNames.Sub`, truyền `userId` vào service (như FoMed). Service không đọc HttpContext.
+- Endpoint đăng nhập gắn `[EnableRateLimiting("auth")]` (mặc định 10 lần/phút/IP, cấu hình `RateLimiting:AuthPermitLimit`). 401/403/429 đều trả `HTTPResponseData`.
+- Khóa ký `Jwt:SigningKey` (≥ 32 ký tự) đặt bằng User Secrets / biến môi trường, không ghi vào appsettings.
+
 ### KHÔNG được dùng (muốn dùng phải sửa mục này và ghi ADR trước)
 
 MediatR, CQRS, AutoMapper, microservices, event sourcing, file `DependencyInjection.cs` riêng từng project, inject `IRepositoryBase<T>`/DbContext thẳng vào service, interface cho service, khuôn phản hồi khác `HTTPResponseData<T>` (kể cả ProblemDetails), thư mục ngoài danh sách đóng ở trên.
+
+## Báo cáo sau mỗi module (BẮT BUỘC)
+
+Mỗi khi làm xong một module/mảng (hoặc một phần đáng kể của nó) có sinh ra code, file hoặc thư mục, phải làm CẢ HAI việc:
+
+1. **Báo cáo trong chatbox** theo đúng khuôn:
+   - **Thư mục mới**: đường dẫn, vì sao cần.
+   - **File mới**: bảng `đường dẫn | vai trò` (gom theo project: Domain, Application, Infrastructure, Api, database, docs).
+   - **File sửa**: bảng `đường dẫn | thay đổi gì`.
+   - **File xóa** (nếu có) và lý do.
+   - **Ghi chú**: quyết định thiết kế, lỗi phát hiện trong lúc làm và cách sửa, hạn chế còn lại, cách test (Swagger/ví dụ request), việc cần người dùng tự làm.
+2. **Ghi lại vào `docs/module-notes/<mảng>.md`** (tên mảng chữ thường theo bảng Mảng: `catalog.md`, `auth.md`, `sales.md`...). Mỗi lần làm thêm thì THÊM một mục mới có ngày (`### dd/mm/yyyy – <việc>`) ở cuối file, không xóa mục cũ. Nội dung giống báo cáo trong chatbox, kèm nhánh/PR, UC/BR liên quan. File ghi chú đi cùng commit của tính năng đó.
+
+Không tính: file sinh tự động (`bin/`, `obj/`), file scaffold trong `Domain/Entities/` (chỉ ghi "scaffold lại, N entity"), script test tạm trong scratchpad.
 
 ## Database-first
 
@@ -223,6 +246,6 @@ Repo: https://github.com/lhknguyen15/FoMart. Mô hình Git Flow rút gọn (khô
 
 ## Trạng thái hiện tại
 
-Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Mảng Catalog xong API (UC-01, UC-02): `api/products` (tìm, chi tiết, tra mã vạch, tạo/sửa, thêm/sửa đơn vị), `api/categories`, `api/suppliers`, `api/locations`; quy tắc ở `Domain/Rules/ProductUnitRules.cs`. Chưa có Auth: ghi dữ liệu dùng user giả lập của `DevelopmentUserMiddleware`. Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Chưa có frontend. Bước tiếp theo: Giai đoạn 1 trong `docs/dev-workflow.md`.
+Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Mảng Catalog xong API (UC-01, UC-02): `api/products` (tìm, chi tiết, tra mã vạch, tạo/sửa, thêm/sửa đơn vị), `api/categories`, `api/suppliers`, `api/locations`; quy tắc ở `Domain/Rules/ProductUnitRules.cs`. Mảng Auth xong (UC-11): `api/auth` (setup chủ tiệm lần đầu, login mật khẩu, login PIN, refresh, logout, me, đổi mật khẩu), `api/users` (chủ tiệm quản lý tài khoản, BR-15). Test trên Swagger: gọi `POST /api/auth/login` (dev: `0900000001` / `Test@123`), bấm Authorize, dán `accessToken`. Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Chưa có frontend. Bước tiếp theo: Giai đoạn 1 trong `docs/dev-workflow.md`.
 
 Vấn đề còn mở (spec mục 11.2): xử lý tồn âm khi đồng bộ hóa đơn offline đến trễ; nguồn dữ liệu ban đầu (Excel hay khai báo dần); tồn đầu kỳ (schema đã hỗ trợ phiếu kiểm kê `scope_type = full` có `adjust_unit_cost`).
