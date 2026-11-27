@@ -8,7 +8,7 @@ Dự án cá nhân để đưa vào CV. Web app (PWA) giúp tiệm tạp hóa nh
 - `docs/module-workflows.md` – Sơ đồ luồng (Mermaid) cho 6 module: danh mục, nhập hàng, bán hàng, chuyển kho, xuất hủy, kiểm kê.
 - `docs/dev-workflow.md` – Quy trình phát triển, vòng lặp mỗi tính năng, việc cần làm ở giai đoạn 1.
 - `docs/database.md` – Thiết kế database đang áp dụng: sơ đồ ERD, `doc_type`, quy tắc nào ép ở DB/ứng dụng, cách trừ kho, lệnh scaffold.
-- `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database.
+- `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database, 0003 quét mã vạch bằng camera.
 - `database/` – Script SQL là nguồn sự thật của schema (`migrate.ps1`, `migrations/Vxxx__*.sql`, `seed/`).
 - `docs/module-notes/` – Ghi chú từng mảng đã làm: file/thư mục đã tạo, API, quyết định, lỗi đã gặp, hạn chế, cách test. Đọc trước khi sửa một mảng có sẵn.
 
@@ -18,7 +18,8 @@ Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. N�
 
 - Backend: ASP.NET Core Web API trên .NET 10, Clean Architecture với cách tổ chức thư mục/file theo FoMed-API (mục "Kiến trúc backend" bên dưới), EF Core **database-first** (scaffold từ DB, KHÔNG dùng EF Migrations) + SQL viết tay cho trừ kho/FEFO và báo cáo nặng, Repository + Unit of Work, JWT có claim vai trò, CORS, SignalR (giai đoạn 5), Serilog, Swagger, health check. Chi tiết: ADR-0001.
 - Database: SQL Server 2022 chạy bằng Docker khi dev: `docker-compose.yml` (container `fomart-sqlserver`, cổng 14330, collation server `Latin1_General_100_CI_AI`), mật khẩu SA trong `.env` (không commit). Dựng database: `./database/migrate.ps1 -Docker -Seed`. KHÔNG dùng container `azuresqledge` của khóa học cũ.
-- Frontend: Vite + React + TypeScript + Tailwind CSS v4, React Router, TanStack Query (dữ liệu server), Zustand (state trên máy), React Hook Form + Zod (form), Dexie (IndexedDB, ngoại tuyến), `vite-plugin-pwa`, `uuid` (v7), thư viện quét mã (`@zxing/browser` hoặc `html5-qrcode`, chốt sau buổi thử camera, ADR-0003). Chi tiết: mục "Kiến trúc frontend".
+- Frontend: Vite + React + TypeScript + Tailwind CSS v4, React Router, TanStack Query (dữ liệu server), Zustand (state trên máy), React Hook Form + Zod (form), Dexie (IndexedDB, ngoại tuyến), `vite-plugin-pwa`, `uuid` (v7), quét mã bằng zxing-cpp WebAssembly qua `barcode-detector/ponyfill`, file `.wasm` tự phục vụ (ADR-0003; đã loại `html5-qrcode`, `@zxing/browser`). Chi tiết: mục "Kiến trúc frontend".
+- App mobile riêng (27/11/2026): sau khi web hoàn thiện sẽ làm thêm một app cho điện thoại, dùng chung backend và database, quét mã bằng camera native (ML Kit / Apple). Làm **sau cùng**; công nghệ chốt khi bắt đầu (ứng viên: React Native + Expo, dùng lại TanStack Query, Zustand, React Hook Form + Zod). Đến lúc đó web vẫn phải dùng được trên điện thoại, và ở quầy dùng máy quét cầm tay dạng bàn phím.
 - Test: chưa tạo project test ở giai đoạn này. Khi thêm: xUnit + Testcontainers (SQL Server), một project `FoMart.Tests` (phải bổ sung vào cây thư mục bên dưới trước). CI: GitHub Actions.
 
 ## Cấu trúc repo
@@ -243,6 +244,7 @@ frontend/
 - Vite **proxy** `/api` sang `http://localhost:5224` (API), nên frontend gọi đường dẫn tương đối `/api/...`: không vướng CORS, điện thoại chỉ cần truy cập máy dev qua Vite.
 - Kiểm tra trước khi mở PR: `npm run build` (gồm `tsc`) và `npm run lint` không lỗi.
 - Node ≥ 22.22 (React Router 8). Nên dùng Node 24 LTS: Node 23 đã hết hỗ trợ nên ESLint 10 không cài được, đang ghim ESLint 9.
+- Trình duyệt tối thiểu = mục tiêu build mặc định của Vite; không dùng API trình duyệt mới hơn mức đó nếu không có đường dự phòng (ví dụ `AbortSignal.any`/`AbortSignal.timeout` làm hỏng mọi request trên điện thoại cũ, ADR-0003 mục 6). Thêm thư viện/API mới thì thử trên điện thoại thật.
 - Package ghim đúng phiên bản (không `^`), đã phát hành ít nhất 2 tuần. TypeScript ghim 6.0.x vì typescript-eslint chưa hỗ trợ TypeScript 7.
 - Chỉ cài package khi bắt đầu dùng tới nó (Zustand, React Hook Form, Zod, `uuid` ở bước đăng nhập/bán hàng; Dexie, `vite-plugin-pwa` ở giai đoạn 6).
 

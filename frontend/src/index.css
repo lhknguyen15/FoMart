@@ -22,6 +22,23 @@
   --color-ok: #1f8a4c;
   --color-warn: #b7791f;
   --color-bad: #c0392b;
+
+  /* Viền chớp quanh camera khi đọc được mã. */
+  --animate-scan-flash: scan-flash 600ms ease-out forwards;
+  @keyframes scan-flash {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scan-flash {
+    animation-duration: 1ms;
+  }
 }
 
 @layer base {

@@ -123,3 +123,49 @@ Nhánh `feature/frontend-scaffold`.
 - **Hạn chế:**
   - Chữ "FoMart" chưa chuyển thành path. Hiện viết bằng font của app; logo chữ cố định cần chuyển chữ thành path, với Be Vietnam Pro (giấy phép OFL).
   - Manifest PWA chưa có (giai đoạn 6, `vite-plugin-pwa`); các PNG đã sẵn.
+
+### 27/11/2026 – Thử quét mã bằng camera, chốt thư viện (ADR-0003)
+
+Nhánh `feature/frontend-scan-spike`.
+
+**Thư mục mới:** `frontend/src/features/sales/components/`, chứa component camera của trang thử.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `docs/adr/0003-barcode-scanning.md` | Quyết định: bộ đọc, đèn/zoom, phản hồi, chuẩn hóa UPC-A, nguồn dự phòng, trình duyệt tối thiểu |
+| `frontend/src/features/sales/pages/ScanTestPage.tsx` | Trang tạm `/thu-quet`: chọn bộ đọc, thẻ kết quả, đo thời gian quét và thời gian tra mã, chụp ảnh để đọc, nhập tay |
+| `frontend/src/features/sales/components/ScanTestCamera.tsx` | Camera + vòng quét `BarcodeDetector`, lấy nét liên tục, zoom, đèn, khung chẩn đoán |
+| `frontend/src/lib/barcodeDetector.ts` | zxing-cpp WASM (`.wasm` tự phục vụ), bộ đọc có sẵn, đọc mã từ ảnh |
+| `frontend/src/lib/timing.ts` | Đo thời gian một việc bất đồng bộ |
+| `frontend/src/api/auth.ts`, `api/catalog.ts` | `login()`, `getProductByBarcode()` và kiểu DTO |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `frontend/src/api/client.ts` | Bỏ `AbortSignal.timeout`/`any` (điện thoại cũ không có), dùng `AbortController` + `setTimeout`; thêm `accessToken` tạm thời |
+| `frontend/src/index.css` | Animation `scan-flash` (tôn trọng `prefers-reduced-motion`) |
+| `frontend/src/app/router.tsx`, `SalePage.tsx` | Route và lối vào `/thu-quet` |
+| `frontend/package.json` | Thêm `barcode-detector` 3.2.3. Đã thử rồi gỡ `@zxing/browser`, `@zxing/library`, `html5-qrcode` |
+| `CLAUDE.md` | Dòng công nghệ, danh sách ADR, quy tắc trình duyệt tối thiểu |
+
+**Ghi chú**
+
+- **Diễn biến buổi thử trên điện thoại thật:**
+  1. Lỗi `AbortSignal` làm hỏng mọi lệnh gọi API.
+  2. Mã trên màn hình đọc được, chai Aquafina thì không, nên thêm khung chẩn đoán và nút chụp ảnh.
+  3. Thêm bộ đọc zxing-cpp, zoom, đèn.
+  4. Người dùng không biết đã quét được chưa, nên thêm viền chớp và thẻ kết quả.
+  5. Bật thêm đèn thì quét tốt.
+- **API không phải nguyên nhân chậm:** khoảng 6 ms gọi thẳng, 25 ms qua proxy (đo trên máy dev).
+- **Bundle:** JS 131 KB gzip, cộng `zxing_reader.wasm` 414 KB gzip tách riêng. Lúc thử đủ 4 bộ đọc là 363 KB.
+- **Hạn chế:**
+  - Mới thử trên một điện thoại.
+  - Chưa ghi loại máy và trình duyệt, chưa có số liệu so sánh từng bộ đọc.
+  - Trang `/thu-quet` vẫn còn để đo trên máy khác.
+- **Việc còn lại theo ADR-0003, làm cùng màn hình bán hàng:**
+  - component quét chính thức, tải lười;
+  - bộ nghe máy quét bàn phím;
+  - chuẩn hóa UPC-A → EAN-13 ở backend và frontend.

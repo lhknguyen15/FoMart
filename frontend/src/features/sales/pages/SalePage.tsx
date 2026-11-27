@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useStoreSettings } from '../../store/hooks/useStore'
 
 // Màn hình bán hàng (UC-05, SC-03): mở sẵn khi vào ứng dụng. Hiện chỉ kiểm tra kết nối máy chủ;
@@ -20,6 +21,10 @@ export function SalePage() {
           </p>
         )}
       </div>
+
+      <Link to="/thu-quet" className="flex min-h-12 items-center justify-center rounded-xl border border-line bg-surface font-medium text-brand-700">
+        Thử quét mã vạch bằng camera
+      </Link>
     </section>
   )
 }
