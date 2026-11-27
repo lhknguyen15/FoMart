@@ -10,6 +10,7 @@ Dự án cá nhân để đưa vào CV. Web app (PWA) giúp tiệm tạp hóa nh
 - `docs/database.md` – Thiết kế database đang áp dụng: sơ đồ ERD, `doc_type`, quy tắc nào ép ở DB/ứng dụng, cách trừ kho, lệnh scaffold.
 - `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database.
 - `database/` – Script SQL là nguồn sự thật của schema (`migrate.ps1`, `migrations/Vxxx__*.sql`, `seed/`).
+- `docs/module-notes/` – Ghi chú từng mảng đã làm: file/thư mục đã tạo, API, quyết định, lỗi đã gặp, hạn chế, cách test. Đọc trước khi sửa một mảng có sẵn.
 
 Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. Nếu thay đổi nghiệp vụ, cập nhật `docs/spec.md` hoặc thêm ADR.
 
@@ -26,7 +27,7 @@ Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. N�
 backend/
 database/   (00_create_database.sql, migrations/, seed/, migrate.ps1)
 frontend/
-docs/       (spec.md, database.md, module-workflows.md, dev-workflow.md, adr/)
+docs/       (spec.md, database.md, module-workflows.md, dev-workflow.md, adr/, module-notes/)
 docker-compose.yml
 README.md
 ```
@@ -162,6 +163,20 @@ Ví dụ: `Application/DTO/Catalog/ProductModels.cs`, `Application/Services/Cata
 ### KHÔNG được dùng (muốn dùng phải sửa mục này và ghi ADR trước)
 
 MediatR, CQRS, AutoMapper, microservices, event sourcing, file `DependencyInjection.cs` riêng từng project, inject `IRepositoryBase<T>`/DbContext thẳng vào service, interface cho service, khuôn phản hồi khác `HTTPResponseData<T>` (kể cả ProblemDetails), thư mục ngoài danh sách đóng ở trên.
+
+## Báo cáo sau mỗi module (BẮT BUỘC)
+
+Mỗi khi làm xong một module/mảng (hoặc một phần đáng kể của nó) có sinh ra code, file hoặc thư mục, phải làm CẢ HAI việc:
+
+1. **Báo cáo trong chatbox** theo đúng khuôn:
+   - **Thư mục mới**: đường dẫn, vì sao cần.
+   - **File mới**: bảng `đường dẫn | vai trò` (gom theo project: Domain, Application, Infrastructure, Api, database, docs).
+   - **File sửa**: bảng `đường dẫn | thay đổi gì`.
+   - **File xóa** (nếu có) và lý do.
+   - **Ghi chú**: quyết định thiết kế, lỗi phát hiện trong lúc làm và cách sửa, hạn chế còn lại, cách test (Swagger/ví dụ request), việc cần người dùng tự làm.
+2. **Ghi lại vào `docs/module-notes/<mảng>.md`** (tên mảng chữ thường theo bảng Mảng: `catalog.md`, `auth.md`, `sales.md`...). Mỗi lần làm thêm thì THÊM một mục mới có ngày (`### dd/mm/yyyy – <việc>`) ở cuối file, không xóa mục cũ. Nội dung giống báo cáo trong chatbox, kèm nhánh/PR, UC/BR liên quan. File ghi chú đi cùng commit của tính năng đó.
+
+Không tính: file sinh tự động (`bin/`, `obj/`), file scaffold trong `Domain/Entities/` (chỉ ghi "scaffold lại, N entity"), script test tạm trong scratchpad.
 
 ## Database-first
 
