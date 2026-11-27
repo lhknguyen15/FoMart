@@ -73,7 +73,7 @@ Nhánh `feature/frontend-scaffold`. Người dùng đề xuất 3 skill. Sau khi
 
 | Đường dẫn | Vai trò |
 | --- | --- |
-| `.claude/skills/impeccable/SKILL.md`, `reference/*.md` (51 file) | Chỉ dẫn của skill, chép nguyên từ commit `2fc5e14` |
+| `.claude/skills/impeccable/SKILL.md`, `reference/**/*.md` (50 file) | Chỉ dẫn của skill, chép nguyên từ commit `2fc5e14` |
 | `.claude/skills/impeccable/LICENSE`, `NOTICE.md` | Giấy phép Apache-2.0 và ghi công bên thứ ba (bắt buộc khi phân phối lại) |
 | `.claude/skills/impeccable/SOURCE.md` | Nguồn, commit, phần đã bỏ, cách cập nhật |
 
