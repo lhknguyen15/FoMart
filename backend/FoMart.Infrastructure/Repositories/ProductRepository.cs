@@ -100,4 +100,15 @@ public sealed class ProductRepository(FoMartDbContext dbContext)
                          .Select(u => u.Id).ToListAsync(cancellationToken);
         return ids.ToHashSet();
     }
+
+    // Đơn vị theo id kèm sản phẩm, chỉ đọc (AsNoTracking): service chỉ gán khóa ngoại, không gán navigation.
+    public async Task<IReadOnlyDictionary<int, ProductUnit>> GetUnitsWithProductAsync(
+        IReadOnlyCollection<int> unitIds, CancellationToken cancellationToken = default)
+    {
+        if (unitIds.Count == 0) return new Dictionary<int, ProductUnit>();
+        return await DbContext.ProductUnits.AsNoTracking()
+            .Include(u => u.Product)
+            .Where(u => unitIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
+    }
 }

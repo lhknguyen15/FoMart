@@ -1,6 +1,7 @@
 using FoMart.Application.DTO.Catalog;
 using FoMart.Application.Interfaces.Repositories;
 using FoMart.Domain.Entities;
+using FoMart.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace FoMart.Infrastructure.Repositories;
@@ -21,6 +22,14 @@ public sealed class LocationRepository(FoMartDbContext dbContext)
     // Vị trí bán mặc định hiện tại.
     public Task<Location?> GetDefaultSaleAsync(CancellationToken cancellationToken = default) =>
         DbContext.Locations.SingleOrDefaultAsync(l => l.IsDefaultSale, cancellationToken);
+
+    // UC-04: nhận hàng vào kho sau đang dùng (nhiều kho thì lấy kho tạo trước), không có thì vào vị trí bán mặc định.
+    public async Task<Location?> GetDefaultReceivingAsync(CancellationToken cancellationToken = default) =>
+        await DbContext.Locations
+            .Where(l => l.IsActive && l.Type == LocationType.Storage)
+            .OrderBy(l => l.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+        ?? await GetDefaultSaleAsync(cancellationToken);
 
     // Còn dòng tồn khác 0 (kể cả âm, BR-01) thì coi là còn hàng.
     public Task<bool> HasStockAsync(int locationId, CancellationToken cancellationToken = default) =>

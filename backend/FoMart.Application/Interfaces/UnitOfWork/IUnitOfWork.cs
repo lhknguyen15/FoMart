@@ -18,6 +18,10 @@ public interface IUnitOfWork
 
     ILocationRepository LocationRepository { get; }
 
+    IGoodsReceiptRepository GoodsReceiptRepository { get; }
+
+    IStockRepository StockRepository { get; }
+
     // Mở transaction cho nghiệp vụ ghi nhiều bảng (nhập hàng, bán hàng, kiểm kê...).
     Task<IWriteScope> BeginWriteAsync(CancellationToken cancellationToken = default);
 

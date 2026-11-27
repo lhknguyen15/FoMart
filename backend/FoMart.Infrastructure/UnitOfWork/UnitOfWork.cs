@@ -14,6 +14,8 @@ public sealed class UnitOfWork(FoMartDbContext dbContext) : IUnitOfWork
     private ICategoryRepository? _categoryRepository;
     private ISupplierRepository? _supplierRepository;
     private ILocationRepository? _locationRepository;
+    private IGoodsReceiptRepository? _goodsReceiptRepository;
+    private IStockRepository? _stockRepository;
 
     public IStoreRepository StoreRepository => _storeRepository ??= new StoreRepository(dbContext);
 
@@ -26,6 +28,10 @@ public sealed class UnitOfWork(FoMartDbContext dbContext) : IUnitOfWork
     public ISupplierRepository SupplierRepository => _supplierRepository ??= new SupplierRepository(dbContext);
 
     public ILocationRepository LocationRepository => _locationRepository ??= new LocationRepository(dbContext);
+
+    public IGoodsReceiptRepository GoodsReceiptRepository => _goodsReceiptRepository ??= new GoodsReceiptRepository(dbContext);
+
+    public IStockRepository StockRepository => _stockRepository ??= new StockRepository(dbContext);
 
     // Mở transaction cho nghiệp vụ ghi nhiều bảng.
     public Task<IWriteScope> BeginWriteAsync(CancellationToken cancellationToken = default) =>

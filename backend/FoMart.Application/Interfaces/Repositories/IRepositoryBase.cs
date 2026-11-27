@@ -14,6 +14,6 @@ public interface IRepositoryBase<TEntity> where TEntity : class
 
     void Update(TEntity entity);
 
-    // Chỉ dùng cho danh mục. Chứng từ không bao giờ xóa (BR-03).
+    // Chỉ dùng cho danh mục và chứng từ còn nháp (chưa đổi tồn). Chứng từ đã hoàn tất không bao giờ xóa (BR-03).
     void Delete(TEntity entity);
 }
