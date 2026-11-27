@@ -27,4 +27,7 @@ public interface IProductRepository : IRepositoryBase<Product>
 
     // Id các đơn vị của sản phẩm đã có giao dịch (bị khóa hệ số, BR-12).
     Task<IReadOnlySet<int>> GetUnitIdsWithTransactionsAsync(int productId, CancellationToken cancellationToken = default);
+
+    // Lấy các đơn vị theo id kèm sản phẩm (nhập hàng, bán hàng): chỉ đọc.
+    Task<IReadOnlyDictionary<int, ProductUnit>> GetUnitsWithProductAsync(IReadOnlyCollection<int> unitIds, CancellationToken cancellationToken = default);
 }

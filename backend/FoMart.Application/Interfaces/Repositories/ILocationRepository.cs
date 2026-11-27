@@ -11,6 +11,9 @@ public interface ILocationRepository : IRepositoryBase<Location>
     // Vị trí bán mặc định hiện tại (được theo dõi để sửa).
     Task<Location?> GetDefaultSaleAsync(CancellationToken cancellationToken = default);
 
+    // Vị trí nhận hàng mặc định (UC-04): kho sau đang dùng nếu có, không thì vị trí bán mặc định.
+    Task<Location?> GetDefaultReceivingAsync(CancellationToken cancellationToken = default);
+
     // Vị trí còn tồn khác 0 không.
     Task<bool> HasStockAsync(int locationId, CancellationToken cancellationToken = default);
 

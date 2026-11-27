@@ -8,6 +8,8 @@ public interface IUnitOfWork
 {
     IStoreRepository StoreRepository { get; }
 
+    IUserRepository UserRepository { get; }
+
     IProductRepository ProductRepository { get; }
 
     ICategoryRepository CategoryRepository { get; }
@@ -15,6 +17,10 @@ public interface IUnitOfWork
     ISupplierRepository SupplierRepository { get; }
 
     ILocationRepository LocationRepository { get; }
+
+    IGoodsReceiptRepository GoodsReceiptRepository { get; }
+
+    IStockRepository StockRepository { get; }
 
     // Mở transaction cho nghiệp vụ ghi nhiều bảng (nhập hàng, bán hàng, kiểm kê...).
     Task<IWriteScope> BeginWriteAsync(CancellationToken cancellationToken = default);

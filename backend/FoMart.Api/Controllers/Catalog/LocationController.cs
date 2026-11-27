@@ -1,12 +1,16 @@
 using FoMart.Application.DTO;
 using FoMart.Application.DTO.Catalog;
 using FoMart.Application.Services.Catalog;
+using FoMart.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoMart.Api.Controllers;
 
 [ApiController]
 [Route("api/locations")]
+[ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status403Forbidden)]
 public sealed class LocationController(LocationService locationService) : ControllerBase
 {
     // Lấy danh sách vị trí kèm tổng tồn; vị trí bán mặc định đứng đầu.
@@ -21,6 +25,7 @@ public sealed class LocationController(LocationService locationService) : Contro
 
     // Tạo vị trí (storage = kho, shelf = kệ bán).
     [HttpPost]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<LocationResponse?>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(HTTPResponseData<LocationResponse?>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(HTTPResponseData<LocationResponse?>), StatusCodes.Status409Conflict)]
@@ -33,6 +38,7 @@ public sealed class LocationController(LocationService locationService) : Contro
 
     // Sửa vị trí, chọn vị trí bán mặc định, ngừng dùng khi tồn bằng 0.
     [HttpPut("{id:int}")]
+    [Authorize(Roles = UserRole.Owner)]
     [ProducesResponseType(typeof(HTTPResponseData<LocationResponse?>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HTTPResponseData<LocationResponse?>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(HTTPResponseData<LocationResponse?>), StatusCodes.Status404NotFound)]
