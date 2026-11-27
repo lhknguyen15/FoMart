@@ -235,7 +235,7 @@ frontend/
 
 - Chuỗi giao diện tiếng Việt viết thẳng trong component (chưa cần i18n); tên biến, hàm tiếng Anh.
 - Style chỉ bằng class Tailwind; màu và font khai báo token trong `@theme` ở `index.css`, không viết mã màu rời trong component.
-- Giao diện thiết kế cho điện thoại trước (bấm bằng ngón cái, nút ≥ 44px), máy tính là phụ.
+- Giao diện thiết kế cho điện thoại trước (bấm bằng ngón cái), máy tính là phụ. Nút chính tối thiểu 48 px (NFR-07); nút phụ tối thiểu 44 px.
 - Biến môi trường chỉ `VITE_*` trong `.env` (không commit), mẫu ở `.env.example`.
 
 ### Chạy khi dev
@@ -261,7 +261,8 @@ frontend/
 - Skill nằm ở `.claude/skills/impeccable/` (Apache-2.0, nguồn và commit trong `SOURCE.md`). Chỉ có `SKILL.md` + `reference/`; **không có và không được thêm `scripts/`**, không chạy launcher/binary `impeccable` (binary gọi dịch vụ ngoài và gửi telemetry). Luôn đi theo nhánh "Launcher unavailable" của `SKILL.md`.
 - Mọi màn hình FoMart là chế độ **Operate** (ứng dụng thao tác). Định hướng sản phẩm ở `PRODUCT.md`, hệ thống thiết kế ở `DESIGN.md` (gốc repo, tạo bằng `init` / `document` của skill).
 - Xong mỗi màn hình chính (đăng nhập, bán hàng, nhập hàng, danh mục...) chạy `critique` rồi `audit`, sửa, cuối cùng `polish`. Kết quả ghi vào module note của mảng.
-- Khi skill mâu thuẫn với CLAUDE.md thì **CLAUDE.md thắng**: Tailwind + token `@theme`, không thư viện component UI, điện thoại trước, font hệ thống (đã chốt trong `DESIGN.md` vì chạy ngoại tuyến và hiển thị tiếng Việt), cây thư mục đóng ở trên.
+- Khi skill mâu thuẫn với CLAUDE.md thì **CLAUDE.md thắng**: Tailwind + token `@theme`, không thư viện component UI, điện thoại trước, cây thư mục đóng ở trên.
+- Font: **Be Vietnam Pro** tự lưu qua `@fontsource/be-vietnam-pro` (400/600/700, import ở `main.tsx`), không tải từ Google Fonts (chạy ngoại tuyến). Hệ thống thiết kế (màu, chữ, hình khối, component, quy tắc): `DESIGN.md`; token trong `index.css` phải khớp nó.
 - Cập nhật skill: làm theo `SOURCE.md` (đọc bản mới trước khi chép đè).
 
 ### KHÔNG được dùng (muốn dùng phải sửa mục này và ghi ADR trước)

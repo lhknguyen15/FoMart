@@ -9,6 +9,6 @@ export interface StoreResponse {
 }
 
 export async function getStore(signal?: AbortSignal): Promise<StoreResponse> {
-  const response = await request<StoreResponse>('/api/stores', { signal })
+  const response = await request<StoreResponse>('/api/stores', { signal, anonymous: true })
   return response.dataResponse
 }

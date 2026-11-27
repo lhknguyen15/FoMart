@@ -169,3 +169,18 @@ Nhánh `feature/frontend-scan-spike`.
   - component quét chính thức, tải lười;
   - bộ nghe máy quét bàn phím;
   - chuẩn hóa UPC-A → EAN-13 ở backend và frontend.
+
+### 27/11/2026 – PRODUCT.md, DESIGN.md, font và màu
+
+Nhánh `feature/frontend-auth`. Chạy Impeccable `init` và `document` (không dùng launcher, đi theo nhánh "Launcher unavailable").
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `PRODUCT.md` (mới) | Người dùng, mục đích, định vị (lô + hạn dùng, chỉ cần điện thoại, BR-01), bối cảnh quầy, ràng buộc, chỉ có dữ liệu mẫu, nguyên tắc, khả năng tiếp cận |
+| `DESIGN.md` (mới) | "Quầy tạp hóa đầu ngõ", token (màu, chữ, bo góc, khoảng cách, component), quy tắc One Awning / Not-Only-Color / Tabular Number / Flat Counter, bảng đối chiếu tên token ↔ class Tailwind |
+| `frontend/src/index.css` | Font Be Vietnam Pro; `ok` → `#1b7a44`, `warn` → `#8f5b10` (bản cũ 4.38:1 và 3.64:1, không đạt 4.5:1 cho chữ); thêm `accent` (vàng mái hiên) và `cream`; màu vùng bôi chọn và con trỏ nhập |
+| `frontend/src/main.tsx` | Import Be Vietnam Pro 400/600/700 (`@fontsource`, tự lưu, chạy ngoại tuyến) |
+| `CLAUDE.md` | Font và DESIGN.md; nút chính 48 px theo NFR-07 |
+
+- **Người dùng chọn:** tinh thần "Quầy tạp hóa đầu ngõ", font Be Vietnam Pro tự lưu, component "chắc tay, phẳng".
+- **Không viết sidecar `.impeccable/design.json`:** không có live panel; thư mục `.impeccable/` đang bị bỏ qua trong git.

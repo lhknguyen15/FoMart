@@ -6,11 +6,18 @@ export interface LoginRequest {
   password: string
 }
 
+export interface PinLoginRequest {
+  phone: string
+  pin: string
+}
+
+export type UserRole = 'owner' | 'staff'
+
 export interface CurrentUserResponse {
   id: number
   name: string
   phone: string
-  role: 'owner' | 'staff'
+  role: UserRole
 }
 
 export interface AuthResponse {
@@ -21,8 +28,19 @@ export interface AuthResponse {
   user: CurrentUserResponse
 }
 
-// POST /api/auth/login: chủ tiệm đăng nhập bằng số điện thoại + mật khẩu.
+// POST /api/auth/login: số điện thoại + mật khẩu (chủ tiệm).
 export async function login(body: LoginRequest): Promise<AuthResponse> {
-  const response = await request<AuthResponse>('/api/auth/login', { method: 'POST', body })
+  const response = await request<AuthResponse>('/api/auth/login', { method: 'POST', body, anonymous: true })
   return response.dataResponse
+}
+
+// POST /api/auth/login-pin: số điện thoại + PIN 4–6 số (đổi ca nhanh).
+export async function loginWithPin(body: PinLoginRequest): Promise<AuthResponse> {
+  const response = await request<AuthResponse>('/api/auth/login-pin', { method: 'POST', body, anonymous: true })
+  return response.dataResponse
+}
+
+// POST /api/auth/logout: thu hồi refresh token của phiên này trên server.
+export async function logout(refreshToken: string): Promise<void> {
+  await request<null>('/api/auth/logout', { method: 'POST', body: { refreshToken } })
 }

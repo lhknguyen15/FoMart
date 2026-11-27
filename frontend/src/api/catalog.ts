@@ -13,10 +13,7 @@ export interface ProductBarcodeResponse {
 }
 
 // Tra mã vạch: trả sản phẩm và đúng đơn vị mang mã đó. 404 = mã chưa có trong danh mục.
-export async function getProductByBarcode(
-  barcode: string,
-  options: { accessToken?: string; signal?: AbortSignal } = {},
-): Promise<ProductBarcodeResponse> {
-  const response = await request<ProductBarcodeResponse>(`/api/products/barcode/${encodeURIComponent(barcode)}`, options)
+export async function getProductByBarcode(barcode: string, signal?: AbortSignal): Promise<ProductBarcodeResponse> {
+  const response = await request<ProductBarcodeResponse>(`/api/products/barcode/${encodeURIComponent(barcode)}`, { signal })
   return response.dataResponse
 }

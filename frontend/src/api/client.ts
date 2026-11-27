@@ -1,9 +1,14 @@
+import { useAuthStore } from '../stores/useAuthStore'
+import type { AuthResponse } from './auth'
 import { ApiError, type HTTPResponseData } from './types'
 
 // Nơi DUY NHẤT trong frontend gọi fetch. Các file api/<mảng>.ts gọi request(), component không gọi trực tiếp.
+// Tự gắn access token của phiên hiện tại và tự làm mới khi token sắp hết hạn hoặc server trả 401.
 
 const baseUrl: string = import.meta.env.VITE_API_BASE_URL ?? ''
 const timeoutMs = 15_000
+// Làm mới trước khi access token hết hạn chừng này, để request không bị 401 giữa chừng.
+const refreshAheadMs = 30_000
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
@@ -12,14 +17,65 @@ export interface RequestOptions {
   body?: unknown
   // TanStack Query truyền signal để hủy request khi màn hình không cần nữa.
   signal?: AbortSignal
-  // Tạm thời truyền tay cho đến khi có useAuthStore (bước đăng nhập sẽ gắn token tự động ở đây).
-  accessToken?: string
+  // Endpoint công khai (đăng nhập, refresh, thông tin cửa hàng): không gắn token, không tự làm mới.
+  anonymous?: boolean
 }
 
 // Gửi request JSON, trả nguyên khuôn HTTPResponseData. Mã ngoài 2xx → ném ApiError mang message của server.
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<HTTPResponseData<T>> {
-  // Một AbortController gộp hai lý do hủy: hết thời gian chờ và người gọi tự hủy.
-  // Không dùng AbortSignal.timeout / AbortSignal.any: điện thoại đời cũ (Safari < 17.4, Chrome < 116) chưa có.
+  if (options.anonymous) return requestOnce<T>(path, options, undefined)
+
+  if (isExpiringSoon()) await refreshSession()
+  try {
+    return await requestOnce<T>(path, options, useAuthStore.getState().session?.accessToken)
+  } catch (error) {
+    // Token bị từ chối (hết hạn sớm, bị thu hồi): làm mới một lần rồi thử lại đúng một lần.
+    if (error instanceof ApiError && error.status === 401 && useAuthStore.getState().session && (await refreshSession())) {
+      return requestOnce<T>(path, options, useAuthStore.getState().session?.accessToken)
+    }
+    throw error
+  }
+}
+
+// Nhiều request cùng lúc gặp token hết hạn thì dùng chung MỘT lần gọi refresh.
+// Server xoay vòng refresh token: gọi refresh hai lần với cùng token cũ sẽ bị coi là đánh cắp và thu hồi mọi phiên.
+let refreshing: Promise<boolean> | null = null
+
+function refreshSession(): Promise<boolean> {
+  refreshing ??= doRefresh().finally(() => {
+    refreshing = null
+  })
+  return refreshing
+}
+
+async function doRefresh(): Promise<boolean> {
+  const session = useAuthStore.getState().session
+  if (!session) return false
+  try {
+    // POST /api/auth/refresh: đổi refresh token lấy cặp mới (server xoay vòng, token cũ hết dùng).
+    const response = await requestOnce<AuthResponse>(
+      '/api/auth/refresh',
+      { method: 'POST', body: { refreshToken: session.refreshToken } },
+      undefined,
+    )
+    useAuthStore.getState().replaceTokens(response.dataResponse)
+    return true
+  } catch (error) {
+    // Mất mạng: giữ phiên, lần sau thử lại. Server từ chối (hết hạn, bị thu hồi): đăng xuất.
+    if (error instanceof ApiError && !error.isNetworkError) useAuthStore.getState().signOut()
+    return false
+  }
+}
+
+function isExpiringSoon(): boolean {
+  const session = useAuthStore.getState().session
+  if (!session) return false
+  return new Date(session.accessTokenExpiresAt).getTime() - Date.now() < refreshAheadMs
+}
+
+// Một lần gửi, có thời gian chờ. Không dùng AbortSignal.timeout / AbortSignal.any:
+// điện thoại đời cũ (Safari < 17.4, Chrome < 116) chưa có (ADR-0003 mục 6).
+async function requestOnce<T>(path: string, options: RequestOptions, accessToken: string | undefined): Promise<HTTPResponseData<T>> {
   const controller = new AbortController()
   let timedOut = false
   const timer = setTimeout(() => {
@@ -31,7 +87,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   else options.signal?.addEventListener('abort', abortFromCaller, { once: true })
 
   try {
-    return await send<T>(path, options, controller.signal, () => timedOut)
+    return await send<T>(path, options, accessToken, controller.signal, () => timedOut)
   } finally {
     clearTimeout(timer)
     options.signal?.removeEventListener('abort', abortFromCaller)
@@ -41,12 +97,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 async function send<T>(
   path: string,
   options: RequestOptions,
+  accessToken: string | undefined,
   signal: AbortSignal,
   isTimedOut: () => boolean,
 ): Promise<HTTPResponseData<T>> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
-  if (options.accessToken) headers.Authorization = `Bearer ${options.accessToken}`
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
   let response: Response
   try {
