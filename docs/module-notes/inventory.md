@@ -49,3 +49,21 @@ Nhánh `feature/purchasing-goods-receipt`. Chưa có chuyển kho, xuất hủy,
   - Thẻ kho tính số dư bằng subquery theo từng dòng; đủ nhanh với quy mô tiệm, dữ liệu lớn thì chuyển sang `SUM() OVER`.
   - Chưa đặt `needs_count`, chưa có lô tạm (làm cùng bán hàng).
 - **Test:** chạy chung 64 kịch bản của `purchasing.md`. Sau mỗi bước nhập, hủy, chuyển kho mô phỏng, đối soát sổ kho đều rỗng.
+
+### 27/11/2026 – Trừ kho cho bán hàng
+
+Nhánh `feature/sales-checkout` (cùng `sales.md`).
+
+**File mới:** `Domain/Rules/FefoAllocator.cs` (thứ tự chia lô xem `sales.md`).
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `Application/Interfaces/Repositories/IStockRepository.cs`, `Infrastructure/Repositories/StockRepository.cs` | Thêm `LockProductsAsync`, `GetLotStocksAsync`, `GetProvisionalLotIdAsync`, `MarkNeedsCountAsync`, `GetSaleMovesAsync`; lớp nội bộ `LotStockRow` đọc kết quả SQL |
+
+**Ghi chú**
+
+- **Khóa:** khóa `products` trước rồi mới khóa `stock`, luôn theo id tăng dần. Hủy phiếu nhập chỉ khóa `stock` theo lô và không khóa `products`, nên hai chiều không chờ vòng lẫn nhau.
+- **Kiểm tra transaction:** `LockLotsAsync`, `LockProductsAsync` và `GetLotStocksAsync` đều ném lỗi nếu không có transaction, vì khóa ngoài transaction thì nhả ngay.
+- **`needs_count`:** bật bằng `ExecuteUpdate` (một câu UPDATE), không nạp entity sản phẩm. `row_version` của sản phẩm vẫn đổi, nên nếu chủ tiệm đang mở form sửa đúng sản phẩm đó thì lần lưu ấy nhận 409 "đã bị thay đổi", phải tải lại.

@@ -22,6 +22,8 @@ public interface IUnitOfWork
 
     IStockRepository StockRepository { get; }
 
+    ISaleRepository SaleRepository { get; }
+
     // Mở transaction cho nghiệp vụ ghi nhiều bảng (nhập hàng, bán hàng, kiểm kê...).
     Task<IWriteScope> BeginWriteAsync(CancellationToken cancellationToken = default);
 
