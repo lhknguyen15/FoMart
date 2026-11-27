@@ -246,6 +246,13 @@ frontend/
 - Package ghim đúng phiên bản (không `^`), đã phát hành ít nhất 2 tuần. TypeScript ghim 6.0.x vì typescript-eslint chưa hỗ trợ TypeScript 7.
 - Chỉ cài package khi bắt đầu dùng tới nó (Zustand, React Hook Form, Zod, `uuid` ở bước đăng nhập/bán hàng; Dexie, `vite-plugin-pwa` ở giai đoạn 6).
 
+### Icon và logo
+
+- Bộ icon DUY NHẤT: **Phosphor** (`@phosphor-icons/react`, MIT). Import từng icon (`import { Barcode } from '@phosphor-icons/react'`) để chỉ icon được dùng vào bundle.
+- Kiểu (`weight`): `regular` mặc định; `bold` cho nút chính và màn hình bán hàng (nhìn rõ khi đứng quầy, ngoài nắng); `duotone` chỉ làm điểm nhấn (trạng thái rỗng, nút quét). Không dùng `thin`/`light` (khó nhìn trên điện thoại). Cỡ theo chữ đi kèm (`size="1.25em"`) hoặc token, màu theo `currentColor`.
+- **KHÔNG** tự vẽ SVG icon, không dùng emoji hay ký tự Unicode thay icon, không trộn bộ icon khác. Phosphor thiếu icon cần thiết thì báo người dùng trước, không tự vẽ bù.
+- Ngoại lệ duy nhất: **logo** FoMart (tài sản thương hiệu, file SVG trong `public/`, kèm icon PWA). Không dùng icon Phosphor làm logo.
+
 ### Thiết kế giao diện: skill Impeccable
 
 - Skill nằm ở `.claude/skills/impeccable/` (Apache-2.0, nguồn và commit trong `SOURCE.md`). Chỉ có `SKILL.md` + `reference/`; **không có và không được thêm `scripts/`**, không chạy launcher/binary `impeccable` (binary gọi dịch vụ ngoài và gửi telemetry). Luôn đi theo nhánh "Launcher unavailable" của `SKILL.md`.
