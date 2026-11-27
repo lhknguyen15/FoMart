@@ -10,7 +10,7 @@ export interface DetectedBarcode {
 }
 
 export interface BarcodeDetectorLike {
-  detect(source: HTMLVideoElement): Promise<DetectedBarcode[]>
+  detect(source: HTMLVideoElement | ImageBitmap): Promise<DetectedBarcode[]>
 }
 
 export type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike
@@ -28,3 +28,36 @@ prepareZXingModule({
 })
 
 export const ZxingWasm: BarcodeDetectorConstructor = ZxingWasmDetector as unknown as BarcodeDetectorConstructor
+
+const PHOTO_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128']
+
+export interface PhotoDecodeResult {
+  code: string | null
+  reader: 'zxing-cpp' | 'native' | null
+  width: number
+  height: number
+  elapsedMs: number
+}
+
+// Đọc mã từ ảnh chụp (app camera gốc của điện thoại: lấy nét tốt, đủ độ phân giải). Thử zxing-cpp trước, rồi bộ đọc có sẵn.
+export async function decodeImageFile(file: File): Promise<PhotoDecodeResult> {
+  const startedAt = performance.now()
+  const bitmap = await createImageBitmap(file)
+  try {
+    const readers: [PhotoDecodeResult['reader'], BarcodeDetectorConstructor | undefined][] = [
+      ['zxing-cpp', ZxingWasm],
+      ['native', getNativeDetector()],
+    ]
+    for (const [reader, Detector] of readers) {
+      if (!Detector) continue
+      const found = await new Detector({ formats: PHOTO_FORMATS }).detect(bitmap).catch(() => [])
+      const first = found[0]
+      if (first) {
+        return { code: first.rawValue, reader, width: bitmap.width, height: bitmap.height, elapsedMs: Math.round(performance.now() - startedAt) }
+      }
+    }
+    return { code: null, reader: null, width: bitmap.width, height: bitmap.height, elapsedMs: Math.round(performance.now() - startedAt) }
+  } finally {
+    bitmap.close()
+  }
+}

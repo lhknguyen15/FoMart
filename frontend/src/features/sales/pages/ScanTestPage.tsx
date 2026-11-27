@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { login, type AuthResponse } from '../../../api/auth'
 import { getProductByBarcode } from '../../../api/catalog'
 import { ApiError } from '../../../api/types'
 import { formatMoney } from '../../../lib/format'
-import { getNativeDetector } from '../../../lib/barcodeDetector'
+import { decodeImageFile, getNativeDetector } from '../../../lib/barcodeDetector'
 import { ScanTestCamera, type ScanEngine } from '../components/ScanTestCamera'
 
 // Trang thử quét mã (ADR-0003): so sánh tốc độ và độ ổn định của các thư viện trên điện thoại thật.
@@ -21,7 +21,7 @@ const DUPLICATE_WINDOW_MS = 2000
 
 interface ScanResult {
   id: number
-  engine: ScanEngine
+  engine: ScanEngine | 'photo'
   code: string
   // Lần đọc đầu sau khi bật camera: thời gian từ lúc camera sẵn sàng. Các lần sau: thời gian từ lần đọc trước.
   elapsedMs: number
@@ -37,6 +37,7 @@ export function ScanTestPage() {
   const [running, setRunning] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [results, setResults] = useState<ScanResult[]>([])
+  const [photoStatus, setPhotoStatus] = useState<string | null>(null)
   const readyAt = useRef<number | null>(null)
   const last = useRef<{ code: string; at: number } | null>(null)
   const nextId = useRef(1)
@@ -71,20 +72,40 @@ export function ScanTestPage() {
     osc.stop(ctx.currentTime + 0.08)
   }
 
-  function handleCode(code: string, now: number) {
+  // Chụp ảnh bằng app camera gốc rồi đọc mã: tách lỗi "camera web mờ" khỏi lỗi "mã trên hàng khó đọc".
+  function submitPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    setPhotoStatus('Đang đọc ảnh…')
+    decodeImageFile(file)
+      .then((result) => {
+        const size = `ảnh ${result.width}×${result.height}, ${result.elapsedMs} ms`
+        if (result.code) {
+          setPhotoStatus(`Đọc được bằng ${result.reader === 'native' ? 'bộ đọc có sẵn' : 'ZXing-C++'} (${size}).`)
+          handleCode(result.code, event.timeStamp, 'photo', result.elapsedMs)
+        } else {
+          setPhotoStatus(`Không tìm thấy mã trong ảnh (${size}). Thử chụp gần hơn, mã nằm ngang, không lóa.`)
+        }
+      })
+      .catch((error: unknown) => setPhotoStatus(error instanceof Error ? error.message : String(error)))
+  }
+
+  function handleCode(code: string, now: number, source: ScanResult['engine'] = engine, measuredMs?: number) {
     const previous = last.current
     if (previous && previous.code === code && now - previous.at < DUPLICATE_WINDOW_MS) {
       last.current = { code, at: now }
       return
     }
     const isFirst = previous === null
-    const elapsedMs = Math.round(now - (isFirst ? (readyAt.current ?? now) : previous.at))
+    const elapsedMs = measuredMs ?? Math.round(now - (isFirst ? (readyAt.current ?? now) : previous.at))
     last.current = { code, at: now }
     beep()
 
     const id = nextId.current++
     const token = session?.accessToken
-    const entry: ScanResult = { id, engine, code, elapsedMs, isFirst, lookup: token ? 'pending' : 'skipped' }
+    const entry: ScanResult = { id, engine: source, code, elapsedMs, isFirst, lookup: token ? 'pending' : 'skipped' }
     setResults((list) => [entry, ...list].slice(0, 30))
     if (!token) return
 
@@ -176,6 +197,12 @@ export function ScanTestPage() {
         Cầm cách mã 10–20 cm, mã nằm ngang theo vạch vàng, tránh lóa đèn trên chai nhựa. Chai tròn: xoay sao cho vạch mã thẳng, không cong.
       </p>
 
+      <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-brand-600 bg-brand-50 font-medium text-brand-700">
+        Chụp ảnh mã để đọc
+        <input type="file" accept="image/*" capture="environment" onChange={submitPhoto} className="sr-only" />
+      </label>
+      {photoStatus && <p className="text-sm text-ink-muted">{photoStatus}</p>}
+
       <form onSubmit={submitManual} className="flex gap-2">
         <input name="code" inputMode="numeric" placeholder="Nhập mã tay (thử tra mã)" aria-label="Nhập mã vạch tay"
           className="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 font-mono" />
@@ -208,7 +235,7 @@ export function ScanTestPage() {
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-mono font-semibold tabular-nums">{r.code}</span>
               <span className="text-xs text-ink-muted tabular-nums">
-                {ENGINES.find((e) => e.id === r.engine)?.label} · {r.isFirst ? 'lần đầu ' : ''}{r.elapsedMs} ms
+                {ENGINES.find((e) => e.id === r.engine)?.label ?? 'Ảnh chụp'} · {r.engine === 'photo' ? 'đọc ảnh ' : r.isFirst ? 'lần đầu ' : ''}{r.elapsedMs} ms
               </span>
             </div>
             <p className={`text-sm ${r.lookup === 'found' ? 'text-ok' : r.lookup === 'missing' ? 'text-warn' : r.lookup === 'error' ? 'text-bad' : 'text-ink-muted'}`}>
