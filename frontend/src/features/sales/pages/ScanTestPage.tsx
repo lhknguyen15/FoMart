@@ -14,6 +14,7 @@ const ENGINES: { id: ScanEngine; label: string }[] = [
   { id: 'zxing', label: 'ZXing' },
   { id: 'html5', label: 'html5-qrcode' },
   { id: 'native', label: 'Có sẵn (Chrome)' },
+  { id: 'wasm', label: 'ZXing-C++ (WASM)' },
 ]
 // Cùng một mã trong khoảng này coi là một lần quét (camera đọc liên tục).
 const DUPLICATE_WINDOW_MS = 2000
@@ -148,7 +149,7 @@ export function ScanTestPage() {
         </form>
       )}
 
-      <div role="radiogroup" aria-label="Thư viện quét" className="grid grid-cols-3 gap-1 rounded-xl bg-line p-1">
+      <div role="radiogroup" aria-label="Thư viện quét" className="grid grid-cols-2 gap-1 rounded-xl bg-line p-1">
         {ENGINES.map((item) => {
           const disabled = item.id === 'native' && !hasNative
           return (

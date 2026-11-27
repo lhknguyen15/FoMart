@@ -2,11 +2,17 @@ import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser'
 import { BarcodeFormat, DecodeHintType } from '@zxing/library'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { useEffect, useRef, useState } from 'react'
-import { getNativeDetector } from '../../../lib/barcodeDetector'
+import { getNativeDetector, ZxingWasm, type BarcodeDetectorConstructor } from '../../../lib/barcodeDetector'
 
-// Thử nghiệm quét mã (ADR-0003): ba engine, cùng một giao diện. Bỏ sau khi chốt thư viện.
+// Thử nghiệm quét mã (ADR-0003): bốn engine, cùng một giao diện. Bỏ sau khi chốt thư viện.
 
-export type ScanEngine = 'zxing' | 'html5' | 'native'
+export type ScanEngine = 'zxing' | 'html5' | 'native' | 'wasm'
+
+// Khả năng điều khiển camera (chỉ có trên một số điện thoại / trình duyệt).
+interface CameraControls {
+  zoom?: { min: number; max: number }
+  torch: boolean
+}
 
 // at = performance.now() lúc đọc được mã / lúc camera sẵn sàng, để trang đo thời gian.
 interface ScanTestCameraProps {
@@ -54,6 +60,11 @@ export function ScanTestCamera({ engine, onCode, onReady, onError }: ScanTestCam
   const regionRef = useRef<HTMLDivElement>(null)
   const stats = useRef<ScanStats>({ attempts: 0, lastDecodeError: null })
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null)
+  const [controls, setControls] = useState<CameraControls | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [torchOn, setTorchOn] = useState(false)
+  // Track video đang chạy (interval bên dưới cập nhật), để nút zoom / đèn điều khiển camera.
+  const [track, setTrack] = useState<MediaStreamTrack | null>(null)
   // Giữ callback mới nhất mà không khởi động lại camera mỗi lần cha vẽ lại.
   const callbacks = useRef({ onCode, onReady, onError })
   useEffect(() => {
@@ -65,9 +76,21 @@ export function ScanTestCamera({ engine, onCode, onReady, onError }: ScanTestCam
     stats.current = { attempts: 0, lastDecodeError: null }
     if (engine === 'zxing' && video) return startZxing(video, callbacks, stats)
     if (engine === 'html5') return startHtml5(callbacks, stats)
-    if (engine === 'native' && video) return startNative(video, callbacks, stats)
+    if (engine === 'native' && video) return startDetectorLoop(video, getNativeDetector(), callbacks, stats)
+    if (engine === 'wasm' && video) return startDetectorLoop(video, ZxingWasm, callbacks, stats)
     return undefined
   }, [engine])
+
+  const applyZoom = (value: number) => {
+    setZoom(value)
+    track?.applyConstraints({ advanced: [{ zoom: value } as unknown as MediaTrackConstraintSet] }).catch(() => undefined)
+  }
+
+  const toggleTorch = () => {
+    const next = !torchOn
+    setTorchOn(next)
+    track?.applyConstraints({ advanced: [{ torch: next } as unknown as MediaTrackConstraintSet] }).catch(() => undefined)
+  }
 
   // Đọc thông số camera và tốc độ quét mỗi 500 ms để hiện lên hình.
   useEffect(() => {
@@ -75,7 +98,16 @@ export function ScanTestCamera({ engine, onCode, onReady, onError }: ScanTestCam
     const timer = window.setInterval(() => {
       const video = videoRef.current ?? regionRef.current?.querySelector('video') ?? null
       const track = video?.srcObject instanceof MediaStream ? video.srcObject.getVideoTracks()[0] : undefined
+      setTrack(track ?? null)
       const settings = track?.getSettings() as (MediaTrackSettings & { focusMode?: string }) | undefined
+      const capabilities = track?.getCapabilities?.() as
+        | (MediaTrackCapabilities & { zoom?: { min: number; max: number }; torch?: boolean })
+        | undefined
+      if (capabilities) {
+        setControls((previous) =>
+          previous ?? { zoom: capabilities.zoom && capabilities.zoom.max > 1 ? capabilities.zoom : undefined, torch: capabilities.torch === true },
+        )
+      }
       const { attempts, lastDecodeError } = stats.current
       setDiagnostics({
         resolution: video && video.videoWidth ? `${video.videoWidth}×${video.videoHeight}` : 'chưa có hình',
@@ -102,6 +134,25 @@ export function ScanTestCamera({ engine, onCode, onReady, onError }: ScanTestCam
           <div className="pointer-events-none absolute inset-x-[12%] top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-warn/90" />
         )}
       </div>
+      {controls && (controls.zoom || controls.torch) && (
+        <div className="flex flex-wrap gap-2">
+          {controls.zoom &&
+            [1, 2, 3]
+              .filter((value) => value >= (controls.zoom?.min ?? 1) && value <= (controls.zoom?.max ?? 1))
+              .map((value) => (
+                <button key={value} type="button" onClick={() => applyZoom(value)} aria-pressed={zoom === value}
+                  className={`min-h-11 min-w-14 rounded-lg border px-3 font-medium ${zoom === value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line bg-surface'}`}>
+                  {value}×
+                </button>
+              ))}
+          {controls.torch && (
+            <button type="button" onClick={toggleTorch} aria-pressed={torchOn}
+              className={`min-h-11 rounded-lg border px-4 font-medium ${torchOn ? 'border-warn bg-warn/15' : 'border-line bg-surface'}`}>
+              {torchOn ? 'Tắt đèn' : 'Bật đèn'}
+            </button>
+          )}
+        </div>
+      )}
       {diagnostics && (
         <p className="rounded-lg bg-ink px-3 py-2 font-mono text-xs leading-relaxed text-white tabular-nums">
           Hình: {diagnostics.resolution} · lấy nét: {diagnostics.focus}
@@ -206,8 +257,13 @@ function startHtml5(callbacks: Callbacks, stats: Stats): () => void {
   }
 }
 
-function startNative(video: HTMLVideoElement, callbacks: Callbacks, stats: Stats): () => void {
-  const Detector = getNativeDetector()
+// Vòng quét dùng giao diện BarcodeDetector: bộ đọc có sẵn của trình duyệt hoặc zxing-cpp (WASM).
+function startDetectorLoop(
+  video: HTMLVideoElement,
+  Detector: BarcodeDetectorConstructor | undefined,
+  callbacks: Callbacks,
+  stats: Stats,
+): () => void {
   if (!Detector) {
     callbacks.current.onError('Trình duyệt này không có BarcodeDetector.')
     return () => undefined
