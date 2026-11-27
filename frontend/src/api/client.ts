@@ -18,9 +18,32 @@ export interface RequestOptions {
 
 // Gửi request JSON, trả nguyên khuôn HTTPResponseData. Mã ngoài 2xx → ném ApiError mang message của server.
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<HTTPResponseData<T>> {
-  const timeout = AbortSignal.timeout(timeoutMs)
-  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout
+  // Một AbortController gộp hai lý do hủy: hết thời gian chờ và người gọi tự hủy.
+  // Không dùng AbortSignal.timeout / AbortSignal.any: điện thoại đời cũ (Safari < 17.4, Chrome < 116) chưa có.
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+  const abortFromCaller = () => controller.abort()
+  if (options.signal?.aborted) controller.abort()
+  else options.signal?.addEventListener('abort', abortFromCaller, { once: true })
 
+  try {
+    return await send<T>(path, options, controller.signal, () => timedOut)
+  } finally {
+    clearTimeout(timer)
+    options.signal?.removeEventListener('abort', abortFromCaller)
+  }
+}
+
+async function send<T>(
+  path: string,
+  options: RequestOptions,
+  signal: AbortSignal,
+  isTimedOut: () => boolean,
+): Promise<HTTPResponseData<T>> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (options.accessToken) headers.Authorization = `Bearer ${options.accessToken}`
@@ -35,7 +58,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     })
   } catch (error) {
     if (options.signal?.aborted) throw error // người gọi tự hủy: để TanStack Query xử lý
-    if (timeout.aborted) throw new ApiError(0, 'Máy chủ không phản hồi. Kiểm tra mạng rồi thử lại.')
+    if (isTimedOut()) throw new ApiError(0, 'Máy chủ không phản hồi. Kiểm tra mạng rồi thử lại.')
     throw new ApiError(0, 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.')
   }
 
