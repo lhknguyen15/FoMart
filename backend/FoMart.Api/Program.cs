@@ -9,6 +9,7 @@ using FoMart.Application.Services.Auth;
 using FoMart.Application.Services.Catalog;
 using FoMart.Application.Services.Inventory;
 using FoMart.Application.Services.Purchasing;
+using FoMart.Application.Services.Sales;
 using FoMart.Application.Services.Store;
 using FoMart.Infrastructure;
 using FoMart.Infrastructure.Authentication;
@@ -109,6 +110,7 @@ try
     builder.Services.AddScoped<LocationService>();
     builder.Services.AddScoped<GoodsReceiptService>();
     builder.Services.AddScoped<StockService>();
+    builder.Services.AddScoped<SaleService>();
 
     // ---------- CORS ----------
     // Origin được phép đọc từ Cors:AllowedOrigins. Không AllowAnyOrigin; JWT gửi qua header nên không cần AllowCredentials.
