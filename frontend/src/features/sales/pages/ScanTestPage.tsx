@@ -105,6 +105,15 @@ export function ScanTestPage() {
     setResults((list) => list.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }
 
+  // Nhập mã tay: kiểm tra riêng phần tra mã (API) khi camera chưa đọc được.
+  function submitManual(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const input = event.currentTarget.elements.namedItem('code')
+    if (!(input instanceof HTMLInputElement) || !input.value.trim()) return
+    handleCode(input.value.trim(), event.timeStamp)
+    input.value = ''
+  }
+
   function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
@@ -162,6 +171,15 @@ export function ScanTestPage() {
         </div>
       )}
       {cameraError && <p className="text-sm text-bad">{cameraError}</p>}
+      <p className="text-sm text-ink-muted">
+        Cầm cách mã 10–20 cm, mã nằm ngang theo vạch vàng, tránh lóa đèn trên chai nhựa. Chai tròn: xoay sao cho vạch mã thẳng, không cong.
+      </p>
+
+      <form onSubmit={submitManual} className="flex gap-2">
+        <input name="code" inputMode="numeric" placeholder="Nhập mã tay (thử tra mã)" aria-label="Nhập mã vạch tay"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 font-mono" />
+        <button type="submit" className="min-h-11 rounded-lg border border-line bg-surface px-4 font-medium">Tra</button>
+      </form>
 
       <button type="button" onClick={running ? () => setRunning(false) : start}
         className={`min-h-14 rounded-xl text-lg font-semibold text-white ${running ? 'bg-ink' : 'bg-brand-600'}`}>
