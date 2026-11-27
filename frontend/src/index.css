@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Token giao diện FoMart. Component chỉ dùng class sinh từ các token này (bg-brand-600, text-ink-muted...). */
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Xanh lá đậm của quầy tạp hóa: nút chính, thanh đầu trang. */
+  --color-brand-50: #eaf5f1;
+  --color-brand-100: #cfe8de;
+  --color-brand-500: #1f8a6d;
+  --color-brand-600: #0f6b54;
+  --color-brand-700: #0b5342;
+
+  /* Mặt giấy và chữ: nền hơi ngả xanh, chữ gần đen. */
+  --color-paper: #f6f8f7;
+  --color-surface: #ffffff;
+  --color-line: #dde4e1;
+  --color-ink: #17211e;
+  --color-ink-muted: #5b6763;
+
+  /* Trạng thái: đủ hàng / cảnh báo (sắp hết hạn, tồn âm) / lỗi. */
+  --color-ok: #1f8a4c;
+  --color-warn: #b7791f;
+  --color-bad: #c0392b;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+}

@@ -18,7 +18,7 @@ Khi code một tính năng, luôn dẫn chiếu UC/BR liên quan trong spec. N�
 
 - Backend: ASP.NET Core Web API trên .NET 10, Clean Architecture với cách tổ chức thư mục/file theo FoMed-API (mục "Kiến trúc backend" bên dưới), EF Core **database-first** (scaffold từ DB, KHÔNG dùng EF Migrations) + SQL viết tay cho trừ kho/FEFO và báo cáo nặng, Repository + Unit of Work, JWT có claim vai trò, CORS, SignalR (giai đoạn 5), Serilog, Swagger, health check. Chi tiết: ADR-0001.
 - Database: SQL Server 2022 chạy bằng Docker khi dev: `docker-compose.yml` (container `fomart-sqlserver`, cổng 14330, collation server `Latin1_General_100_CI_AI`), mật khẩu SA trong `.env` (không commit). Dựng database: `./database/migrate.ps1 -Docker -Seed`. KHÔNG dùng container `azuresqledge` của khóa học cũ.
-- Frontend: Vite + React + TypeScript, `@zxing/browser` hoặc `html5-qrcode`, TanStack Query, Dexie (IndexedDB), `vite-plugin-pwa`, React Hook Form + Zod, React Router, `uuid` (v7).
+- Frontend: Vite + React + TypeScript + Tailwind CSS v4, React Router, TanStack Query (dữ liệu server), Zustand (state trên máy), React Hook Form + Zod (form), Dexie (IndexedDB, ngoại tuyến), `vite-plugin-pwa`, `uuid` (v7), thư viện quét mã (`@zxing/browser` hoặc `html5-qrcode`, chốt sau buổi thử camera, ADR-0003). Chi tiết: mục "Kiến trúc frontend".
 - Test: chưa tạo project test ở giai đoạn này. Khi thêm: xUnit + Testcontainers (SQL Server), một project `FoMart.Tests` (phải bổ sung vào cây thư mục bên dưới trước). CI: GitHub Actions.
 
 ## Cấu trúc repo
@@ -164,6 +164,90 @@ Ví dụ: `Application/DTO/Catalog/ProductModels.cs`, `Application/Services/Cata
 
 MediatR, CQRS, AutoMapper, microservices, event sourcing, file `DependencyInjection.cs` riêng từng project, inject `IRepositoryBase<T>`/DbContext thẳng vào service, interface cho service, khuôn phản hồi khác `HTTPResponseData<T>` (kể cả ProblemDetails), thư mục ngoài danh sách đóng ở trên.
 
+## Kiến trúc frontend (BẮT BUỘC tuân theo)
+
+SPA chạy trên điện thoại (PWA), gọi `FoMart.Api`. Chia theo **mảng** giống backend (`auth`, `store`, `catalog`, `purchasing`, `sales`, `inventory`, `report`), để một tính năng tìm được ở cùng tên mảng ở cả hai phía.
+
+### Bốn loại state, mỗi loại một công cụ
+
+| Loại | Ví dụ | Công cụ | Nằm ở |
+| --- | --- | --- | --- |
+| Dữ liệu từ server | sản phẩm, hóa đơn, tồn, thẻ kho | TanStack Query (`useQuery`, `useMutation`) | `features/<mảng>/hooks/` |
+| State dùng chung trên máy | phiên đăng nhập, giỏ hàng, giỏ chờ chuyển khoản | Zustand (+ `persist` khi cần giữ qua F5) | `stores/` |
+| Form | đăng nhập, sản phẩm + đơn vị, dòng nhập hàng | React Hook Form + Zod | `features/<mảng>/schemas/` + component form |
+| Ngoại tuyến | hóa đơn bán lúc mất mạng, hàng đợi đồng bộ | Dexie (IndexedDB) | `offline/` |
+
+State chỉ một component dùng (modal mở, tab đang chọn) thì dùng `useState`. KHÔNG chép dữ liệu server vào Zustand; KHÔNG gọi API trong component.
+
+### Cây thư mục (danh sách ĐÓNG, thêm thư mục mới phải sửa mục này trước)
+
+```
+frontend/
+  index.html  vite.config.ts  tsconfig.json  tsconfig.app.json  tsconfig.node.json  eslint.config.js  package.json  .env.example
+  public/                         icon, ảnh cho PWA
+  src/
+    main.tsx                      gắn QueryClientProvider + RouterProvider — một chỗ duy nhất
+    index.css                     @import "tailwindcss" + @theme (màu, font của FoMart)
+    app/                          router.tsx, queryClient.ts, AppLayout.tsx, RequireAuth.tsx, NotFoundPage.tsx
+    api/
+      client.ts                   hàm request() bọc fetch: gắn JWT, refresh 1 lần khi 401, timeout, đọc HTTPResponseData
+      types.ts                    HTTPResponseData<T>, PagedResult<T>, ApiError
+      <mảng>.ts                   kiểu DTO (giống record của backend, camelCase) + hàm gọi endpoint của mảng
+    features/<mảng>/
+      pages/<ChủĐề>Page.tsx       một route = một page
+      components/<Tên>.tsx        component chỉ mảng này dùng
+      hooks/use<ChủĐề>.ts         query key + useQuery/useMutation của chủ đề
+      schemas/<chủĐề>Schema.ts    schema Zod của form
+    stores/use<Tên>Store.ts       store Zustand: useAuthStore, useCartStore
+    offline/                      db.ts (Dexie), syncQueue.ts — giai đoạn 6
+    components/ui/<Tên>.tsx       component dùng chung, chỉ Tailwind: Button, Input, MoneyText, Sheet...
+    lib/                          format.ts (18.000đ, dd/mm/yyyy, giờ VN), id.ts (uuid v7)
+```
+
+### Luồng một màn hình
+
+```
+<ChủĐề>Page ─► use<ChủĐề> (TanStack Query) ─► api/<mảng>.ts ─► api/client.ts ─► FoMart.Api
+     │
+     └─► use<Tên>Store (Zustand) cho giỏ hàng / phiên đăng nhập
+```
+
+- **Query key** của mỗi chủ đề khai báo một lần trong hook của nó (`productKeys.list(params)`, `productKeys.detail(id)`). Mutation xong thì `invalidateQueries` đúng key bị ảnh hưởng (bán xong: `stock`, `products`, `sales`).
+- **Lỗi API:** `client.ts` ném `ApiError { status, message, fieldErrors? }` cho mọi mã ngoài 2xx. 400 có `dataResponse` dạng `{ field: [lỗi] }` thì form gán vào `setError`. 409 cần xác nhận (cảnh báo giá, lô hết hạn) thì màn hình hỏi người dùng rồi gửi lại với cờ `confirm…`.
+- **Token:** access token trong `useAuthStore` (bộ nhớ + `persist`), refresh token chỉ dùng trong `client.ts`. Nhiều request cùng gặp 401 thì chỉ refresh một lần.
+- **Form:** mỗi form một schema Zod khớp ràng buộc của backend (độ dài, số dương...); `useForm({ resolver: zodResolver(schema) })`. Backend vẫn là nơi kiểm tra cuối cùng.
+- **Id hóa đơn:** sinh bằng `uuid` v7 (`lib/id.ts`) ngay khi tạo giỏ, gửi lại cùng id khi thử lại.
+- **Hiển thị:** tiền `18.000đ`, ngày `dd/mm/yyyy`, giờ Việt Nam, qua `lib/format.ts`. Server trả UTC.
+
+### Tên file và quy ước
+
+| Loại | Quy ước | Ví dụ |
+| --- | --- | --- |
+| Page | `<ChủĐề>Page.tsx`, export có tên (không dùng `export default`) | `SalePage.tsx` |
+| Component | PascalCase `.tsx`, một component chính một file | `CartLine.tsx` |
+| Hook TanStack Query | `use<ChủĐề>.ts`, export nhiều hook + `<chủĐề>Keys` | `useProducts.ts` |
+| Store | `use<Tên>Store.ts` | `useCartStore.ts` |
+| Schema | `<chủĐề>Schema.ts`, kiểu suy ra bằng `z.infer` | `productSchema.ts` |
+| API | `api/<mảng>.ts`: `type <ChủĐề>Response` (trùng tên DTO backend) + hàm `getX`, `createX` | `api/sales.ts` |
+
+- Chuỗi giao diện tiếng Việt viết thẳng trong component (chưa cần i18n); tên biến, hàm tiếng Anh.
+- Style chỉ bằng class Tailwind; màu và font khai báo token trong `@theme` ở `index.css`, không viết mã màu rời trong component.
+- Giao diện thiết kế cho điện thoại trước (bấm bằng ngón cái, nút ≥ 44px), máy tính là phụ.
+- Biến môi trường chỉ `VITE_*` trong `.env` (không commit), mẫu ở `.env.example`.
+
+### Chạy khi dev
+
+- `npm run dev` chạy HTTPS (`@vitejs/plugin-basic-ssl`) và `server.host: true` để điện thoại cùng Wi-Fi mở được; camera chỉ chạy qua HTTPS.
+- Vite **proxy** `/api` sang `http://localhost:5224` (API), nên frontend gọi đường dẫn tương đối `/api/...`: không vướng CORS, điện thoại chỉ cần truy cập máy dev qua Vite.
+- Kiểm tra trước khi mở PR: `npm run build` (gồm `tsc`) và `npm run lint` không lỗi.
+- Node ≥ 22.22 (React Router 8). Nên dùng Node 24 LTS: Node 23 đã hết hỗ trợ nên ESLint 10 không cài được, đang ghim ESLint 9.
+- Package ghim đúng phiên bản (không `^`), đã phát hành ít nhất 2 tuần. TypeScript ghim 6.0.x vì typescript-eslint chưa hỗ trợ TypeScript 7.
+- Chỉ cài package khi bắt đầu dùng tới nó (Zustand, React Hook Form, Zod, `uuid` ở bước đăng nhập/bán hàng; Dexie, `vite-plugin-pwa` ở giai đoạn 6).
+
+### KHÔNG được dùng (muốn dùng phải sửa mục này và ghi ADR trước)
+
+Redux/Redux Toolkit, axios (đã chọn `fetch` bọc trong `api/client.ts`; nếu đổi thì chỉ đổi file này), thư viện component UI dựng sẵn (MUI, Ant Design, Chakra...), CSS-in-JS, gọi `fetch` ngoài `api/client.ts`, `useEffect` để tải dữ liệu server, lưu token vào cookie tự viết, thư mục ngoài danh sách đóng ở trên.
+
 ## Báo cáo sau mỗi module (BẮT BUỘC)
 
 Mỗi khi làm xong một module/mảng (hoặc một phần đáng kể của nó) có sinh ra code, file hoặc thư mục, phải làm CẢ HAI việc:
@@ -248,6 +332,6 @@ Repo: https://github.com/lhknguyen15/FoMart. Mô hình Git Flow rút gọn (khô
 
 ## Trạng thái hiện tại
 
-Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Mảng Catalog xong API (UC-01, UC-02): `api/products` (tìm, chi tiết, tra mã vạch, tạo/sửa, thêm/sửa đơn vị), `api/categories`, `api/suppliers`, `api/locations`; quy tắc ở `Domain/Rules/ProductUnitRules.cs`. Mảng Auth xong (UC-11): `api/auth` (setup chủ tiệm lần đầu, login mật khẩu, login PIN, refresh, logout, me, đổi mật khẩu), `api/users` (chủ tiệm quản lý tài khoản, BR-15). Mảng Purchasing có phiếu nhập (UC-04): `api/goods-receipts` (nháp, thêm/sửa/xóa dòng, hoàn tất tạo lô + ghi sổ kho, hủy bằng chứng từ đảo ngược, giá nhập lần trước; ẩn giá với nhân viên theo BR-08). Lõi kho ở `StockRepository` (chỉ thêm `lots`/`stock_moves`, khóa tồn theo lô) và `api/stock` (tồn theo lô, thẻ kho, đối soát sổ kho). Mảng Sales có bán hàng và hủy hóa đơn (UC-05, UC-06): `api/sales` (Id UUID v7 từ máy bán, tiền mặt trừ kho ngay, chuyển khoản chờ "Đã nhận", trừ kho FEFO qua `Domain/Rules/FefoAllocator.cs`, tồn âm + lô tạm + `needs_count`, hủy bằng `sale_cancel`); BR-18 tự chuyển kho để làm cùng UC-07. Test trên Swagger: gọi `POST /api/auth/login` (dev: `0900000001` / `Test@123`), bấm Authorize, dán `accessToken`. Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Chưa có frontend. Bước tiếp theo: Giai đoạn 1 trong `docs/dev-workflow.md`.
+Đã xong phân tích, đặc tả, script database (`database/`, đã chạy thử trên SQL Server 2022) và quy tắc kiến trúc backend (mục trên, ADR-0001). Khung backend đã dựng theo mục "Kiến trúc backend" (4 project, scaffold 26 entity, Repository + UoW, luồng mẫu `GET /api/stores`, CORS, Serilog, Swagger tại `/swagger`, health check tại `/health`; build 0 cảnh báo). Mảng Catalog xong API (UC-01, UC-02): `api/products` (tìm, chi tiết, tra mã vạch, tạo/sửa, thêm/sửa đơn vị), `api/categories`, `api/suppliers`, `api/locations`; quy tắc ở `Domain/Rules/ProductUnitRules.cs`. Mảng Auth xong (UC-11): `api/auth` (setup chủ tiệm lần đầu, login mật khẩu, login PIN, refresh, logout, me, đổi mật khẩu), `api/users` (chủ tiệm quản lý tài khoản, BR-15). Mảng Purchasing có phiếu nhập (UC-04): `api/goods-receipts` (nháp, thêm/sửa/xóa dòng, hoàn tất tạo lô + ghi sổ kho, hủy bằng chứng từ đảo ngược, giá nhập lần trước; ẩn giá với nhân viên theo BR-08). Lõi kho ở `StockRepository` (chỉ thêm `lots`/`stock_moves`, khóa tồn theo lô) và `api/stock` (tồn theo lô, thẻ kho, đối soát sổ kho). Mảng Sales có bán hàng và hủy hóa đơn (UC-05, UC-06): `api/sales` (Id UUID v7 từ máy bán, tiền mặt trừ kho ngay, chuyển khoản chờ "Đã nhận", trừ kho FEFO qua `Domain/Rules/FefoAllocator.cs`, tồn âm + lô tạm + `needs_count`, hủy bằng `sale_cancel`); BR-18 tự chuyển kho để làm cùng UC-07. Test trên Swagger: gọi `POST /api/auth/login` (dev: `0900000001` / `Test@123`), bấm Authorize, dán `accessToken`. Chạy: `docker compose up -d` rồi `dotnet run --project backend/FoMart.Api`. Chuỗi kết nối nằm trong User Secrets của FoMart.Api. Frontend đã dựng khung theo mục "Kiến trúc frontend" (`frontend/`: Vite 8 + React 19 + TypeScript 6 + Tailwind 4, React Router, TanStack Query, `api/client.ts` bọc fetch, proxy `/api`, HTTPS khi dev); chạy `npm install` rồi `npm run dev` trong `frontend/` (API phải chạy trước). Bước tiếp theo: thử quét mã bằng camera (ADR-0003), rồi đăng nhập.
 
 Vấn đề còn mở (spec mục 11.2): xử lý tồn âm khi đồng bộ hóa đơn offline đến trễ; nguồn dữ liệu ban đầu (Excel hay khai báo dần); tồn đầu kỳ (schema đã hỗ trợ phiếu kiểm kê `scope_type = full` có `adjust_unit_cost`).
