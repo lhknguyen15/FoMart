@@ -8,14 +8,12 @@ import { formatMoney } from '../../../lib/format'
 import { measure } from '../../../lib/timing'
 import { ScanTestCamera, type ScanEngine } from '../components/ScanTestCamera'
 
-// Trang thử quét mã (ADR-0003): so sánh tốc độ và độ ổn định của các thư viện trên điện thoại thật.
-// Tạm thời, bỏ khi đã chốt thư viện.
+// Trang thử quét mã (ADR-0003): đo bộ đọc zxing-cpp đã chọn và bộ đọc có sẵn trên điện thoại thật.
+// Tạm thời, bỏ khi màn hình bán hàng có component quét chính thức.
 
 const ENGINES: { id: ScanEngine; label: string }[] = [
-  { id: 'zxing', label: 'ZXing' },
-  { id: 'html5', label: 'html5-qrcode' },
+  { id: 'wasm', label: 'ZXing-C++ (đã chọn)' },
   { id: 'native', label: 'Có sẵn (Chrome)' },
-  { id: 'wasm', label: 'ZXing-C++ (WASM)' },
 ]
 // Cùng một mã trong khoảng này coi là một lần quét (camera đọc liên tục).
 const DUPLICATE_WINDOW_MS = 2000
