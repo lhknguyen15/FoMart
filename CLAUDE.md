@@ -28,6 +28,8 @@ backend/
 database/   (00_create_database.sql, migrations/, seed/, migrate.ps1)
 frontend/
 docs/       (spec.md, database.md, module-workflows.md, dev-workflow.md, adr/, module-notes/)
+.claude/skills/impeccable/   (skill thiết kế giao diện, xem mục "Kiến trúc frontend")
+PRODUCT.md, DESIGN.md        (định hướng sản phẩm và hệ thống thiết kế cho skill Impeccable; tạo ở bước đăng nhập)
 docker-compose.yml
 README.md
 ```
@@ -243,6 +245,14 @@ frontend/
 - Node ≥ 22.22 (React Router 8). Nên dùng Node 24 LTS: Node 23 đã hết hỗ trợ nên ESLint 10 không cài được, đang ghim ESLint 9.
 - Package ghim đúng phiên bản (không `^`), đã phát hành ít nhất 2 tuần. TypeScript ghim 6.0.x vì typescript-eslint chưa hỗ trợ TypeScript 7.
 - Chỉ cài package khi bắt đầu dùng tới nó (Zustand, React Hook Form, Zod, `uuid` ở bước đăng nhập/bán hàng; Dexie, `vite-plugin-pwa` ở giai đoạn 6).
+
+### Thiết kế giao diện: skill Impeccable
+
+- Skill nằm ở `.claude/skills/impeccable/` (Apache-2.0, nguồn và commit trong `SOURCE.md`). Chỉ có `SKILL.md` + `reference/`; **không có và không được thêm `scripts/`**, không chạy launcher/binary `impeccable` (binary gọi dịch vụ ngoài và gửi telemetry). Luôn đi theo nhánh "Launcher unavailable" của `SKILL.md`.
+- Mọi màn hình FoMart là chế độ **Operate** (ứng dụng thao tác). Định hướng sản phẩm ở `PRODUCT.md`, hệ thống thiết kế ở `DESIGN.md` (gốc repo, tạo bằng `init` / `document` của skill).
+- Xong mỗi màn hình chính (đăng nhập, bán hàng, nhập hàng, danh mục...) chạy `critique` rồi `audit`, sửa, cuối cùng `polish`. Kết quả ghi vào module note của mảng.
+- Khi skill mâu thuẫn với CLAUDE.md thì **CLAUDE.md thắng**: Tailwind + token `@theme`, không thư viện component UI, điện thoại trước, font hệ thống (đã chốt trong `DESIGN.md` vì chạy ngoại tuyến và hiển thị tiếng Việt), cây thư mục đóng ở trên.
+- Cập nhật skill: làm theo `SOURCE.md` (đọc bản mới trước khi chép đè).
 
 ### KHÔNG được dùng (muốn dùng phải sửa mục này và ghi ADR trước)
 

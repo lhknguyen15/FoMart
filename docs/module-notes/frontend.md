@@ -60,3 +60,39 @@ Nhánh `feature/frontend-scaffold`. Đã chốt với người dùng: Vite + Rea
 - **Việc người dùng tự làm:**
   - Nên cài Node 24 LTS, rồi xóa `node_modules` và chạy `npm install` lại.
   - Lần đầu mở trên điện thoại, trình duyệt cảnh báo chứng chỉ tự ký: chọn "Vẫn tiếp tục".
+
+### 27/11/2026 – Thêm skill thiết kế Impeccable
+
+Nhánh `feature/frontend-scaffold`. Người dùng đề xuất 3 skill. Sau khi đọc nguồn thì chỉ chọn Impeccable:
+- Taste Skill dựng website giới thiệu (banner lớn, ảnh, font ngẫu nhiên), không hợp ứng dụng thao tác.
+- Astryx (Meta) là thư viện component React, trái quy tắc "không thư viện component UI" và còn beta.
+
+**Thư mục mới:** `.claude/skills/impeccable/` – skill dùng cho dự án, có version theo repo.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `.claude/skills/impeccable/SKILL.md`, `reference/*.md` (51 file) | Chỉ dẫn của skill, chép nguyên từ commit `2fc5e14` |
+| `.claude/skills/impeccable/LICENSE`, `NOTICE.md` | Giấy phép Apache-2.0 và ghi công bên thứ ba (bắt buộc khi phân phối lại) |
+| `.claude/skills/impeccable/SOURCE.md` | Nguồn, commit, phần đã bỏ, cách cập nhật |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `CLAUDE.md` | Mục "Thiết kế giao diện: skill Impeccable"; cây repo thêm `.claude/skills/impeccable/`, `PRODUCT.md`, `DESIGN.md` |
+| `.gitignore` | Bỏ qua `.impeccable/` |
+
+**Ghi chú**
+
+- **Đã bỏ `scripts/`.** Launcher tải binary engine. Mã nguồn Rust của engine công khai, nhưng engine:
+  - gọi `impeccable.style/api` (roll API, gọi cả khi đã tắt telemetry);
+  - kiểm tra bản cập nhật;
+  - gửi telemetry lựa chọn thiết kế theo mặc định;
+  - có tính năng tài khoản / gói Pro.
+
+  Không có dấu hiệu độc hại, nhưng FoMart không cần gọi dịch vụ ngoài. Skill tự hỗ trợ chạy không có engine (nhánh "Launcher unavailable").
+- **Mất so với cài đầy đủ:** chụp màn hình tự động (`shot`), hook detector, `font-fetch`, `live`, `generate`.
+- **Điểm vênh đã biết:** `craft-floor.md` coi font hệ thống làm font tiêu đề là lỗi. FoMart giữ font hệ thống (ngoại tuyến, tiếng Việt, tốc độ) và sẽ ghi rõ trong `DESIGN.md` ("The brief wins").
+- **Chưa làm:** `PRODUCT.md` / `DESIGN.md`, làm cùng màn hình đăng nhập.
