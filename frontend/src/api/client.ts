@@ -12,6 +12,8 @@ export interface RequestOptions {
   body?: unknown
   // TanStack Query truyền signal để hủy request khi màn hình không cần nữa.
   signal?: AbortSignal
+  // Tạm thời truyền tay cho đến khi có useAuthStore (bước đăng nhập sẽ gắn token tự động ở đây).
+  accessToken?: string
 }
 
 // Gửi request JSON, trả nguyên khuôn HTTPResponseData. Mã ngoài 2xx → ném ApiError mang message của server.
@@ -21,6 +23,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  if (options.accessToken) headers.Authorization = `Bearer ${options.accessToken}`
 
   let response: Response
   try {
