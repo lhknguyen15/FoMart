@@ -96,3 +96,30 @@ Nhánh `feature/frontend-scaffold`. Người dùng đề xuất 3 skill. Sau khi
 - **Mất so với cài đầy đủ:** chụp màn hình tự động (`shot`), hook detector, `font-fetch`, `live`, `generate`.
 - **Điểm vênh đã biết:** `craft-floor.md` coi font hệ thống làm font tiêu đề là lỗi. FoMart giữ font hệ thống (ngoại tuyến, tiếng Việt, tốc độ) và sẽ ghi rõ trong `DESIGN.md` ("The brief wins").
 - **Chưa làm:** `PRODUCT.md` / `DESIGN.md`, làm cùng màn hình đăng nhập.
+
+### 27/11/2026 – Logo và quy tắc icon
+
+Nhánh `feature/frontend-scaffold`.
+
+- **Bộ icon:** người dùng chọn Phosphor (cân nhắc cùng React Icons, Tabler, Lucide, Heroicons). Quy tắc ghi ở CLAUDE.md mục "Icon và logo": một bộ duy nhất, không tự vẽ icon. Package chưa cài, cài khi màn hình đầu tiên dùng tới.
+- **Logo:** đưa 3 phương án trên canvas claude.ai "FoMart Logo" (A Mái hiên, B Mã vạch, C Lô hàng). Người dùng chọn **A**.
+
+**File mới / sửa**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `frontend/public/logo-mark.svg` | Biểu tượng dùng trong giao diện (ô vuông bo góc 24/96) |
+| `frontend/public/favicon.svg` | Thay favicon tạm hình giỏ |
+| `frontend/public/apple-touch-icon.png` | 180×180, vuông tràn viền (iOS tự bo góc) |
+| `frontend/public/pwa-192.png`, `pwa-512.png` | Icon PWA "any" |
+| `frontend/public/pwa-maskable-512.png` | Icon PWA "maskable": nền tràn viền, hình thu 75% vào vùng an toàn |
+| `frontend/index.html` | Thêm `apple-touch-icon` |
+| `frontend/src/app/AppLayout.tsx` | Thanh đầu trang dùng `logo-mark.svg` |
+| `CLAUDE.md` | Mục "Icon và logo": Phosphor, logo đã chốt, danh sách file logo |
+
+**Ghi chú**
+
+- **Cách sinh PNG:** dùng `@resvg/resvg-js` 2.6.2 cài trong thư mục tạm, không thêm vào dependency của dự án. Đổi logo thì sinh lại từ SVG.
+- **Hạn chế:**
+  - Chữ "FoMart" chưa chuyển thành path. Hiện viết bằng font của app; logo chữ cố định cần chuyển chữ thành path, với Be Vietnam Pro (giấy phép OFL).
+  - Manifest PWA chưa có (giai đoạn 6, `vite-plugin-pwa`); các PNG đã sẵn.

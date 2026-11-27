@@ -9,7 +9,7 @@ export function AppLayout() {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-10 bg-brand-600 pt-[env(safe-area-inset-top)] text-white shadow-sm">
         <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
-          <img src="/favicon.svg" alt="" className="size-8 rounded-lg" />
+          <img src="/logo-mark.svg" alt="" className="size-8" />
           <span className="truncate text-lg font-semibold">{store.data?.name ?? 'FoMart'}</span>
         </div>
       </header>

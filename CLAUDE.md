@@ -251,7 +251,8 @@ frontend/
 - Bộ icon DUY NHẤT: **Phosphor** (`@phosphor-icons/react`, MIT). Import từng icon (`import { Barcode } from '@phosphor-icons/react'`) để chỉ icon được dùng vào bundle.
 - Kiểu (`weight`): `regular` mặc định; `bold` cho nút chính và màn hình bán hàng (nhìn rõ khi đứng quầy, ngoài nắng); `duotone` chỉ làm điểm nhấn (trạng thái rỗng, nút quét). Không dùng `thin`/`light` (khó nhìn trên điện thoại). Cỡ theo chữ đi kèm (`size="1.25em"`) hoặc token, màu theo `currentColor`.
 - **KHÔNG** tự vẽ SVG icon, không dùng emoji hay ký tự Unicode thay icon, không trộn bộ icon khác. Phosphor thiếu icon cần thiết thì báo người dùng trước, không tự vẽ bù.
-- Ngoại lệ duy nhất: **logo** FoMart (tài sản thương hiệu, file SVG trong `public/`, kèm icon PWA). Không dùng icon Phosphor làm logo.
+- Ngoại lệ duy nhất: **logo** FoMart (tài sản thương hiệu). Không dùng icon Phosphor làm logo.
+- Logo đã chốt: phương án A "Mái hiên" (mái che sọc vàng `#f2b33d` / kem `#fdf3dc` trên chữ F, nền `#0f6b54`; bản phác thảo trên canvas claude.ai "FoMart Logo"). File trong `frontend/public/`: `logo-mark.svg` (dùng trong giao diện), `favicon.svg`, `apple-touch-icon.png` (180, vuông, iOS tự bo góc), `pwa-192.png`, `pwa-512.png`, `pwa-maskable-512.png` (nền tràn viền, hình thu vào vùng an toàn 75%). Chữ "FoMart" cạnh logo viết bằng font của app, chưa có bản chữ chuyển thành path.
 
 ### Thiết kế giao diện: skill Impeccable
 
