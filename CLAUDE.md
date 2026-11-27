@@ -176,6 +176,8 @@ Mỗi khi làm xong một module/mảng (hoặc một phần đáng kể của n
    - **Ghi chú**: quyết định thiết kế, lỗi phát hiện trong lúc làm và cách sửa, hạn chế còn lại, cách test (Swagger/ví dụ request), việc cần người dùng tự làm.
 2. **Ghi lại vào `docs/module-notes/<mảng>.md`** (tên mảng chữ thường theo bảng Mảng: `catalog.md`, `auth.md`, `sales.md`...). Mỗi lần làm thêm thì THÊM một mục mới có ngày (`### dd/mm/yyyy – <việc>`) ở cuối file, không xóa mục cũ. Nội dung giống báo cáo trong chatbox, kèm nhánh/PR, UC/BR liên quan. File ghi chú đi cùng commit của tính năng đó.
 
+3. **Cập nhật trang tiến độ online** (dashboard claude.ai "FoMart Tiến Độ": https://claude.ai/artifact/MyXftVoWzFxNwmwYnan1Tw). Mỗi hạng mục là một dòng trong collection `data/progress/modules` của trang, ghi bằng công cụ ArtifactData (`update`, có `if_version`). Trường: `phase`, `phaseName`, `order`, `title`, `refs`, `status` (`done` | `review` = đã push, chờ merge | `in_progress` | `next` | `planned`), `branch`, `pr`, `tests`, `updated` (`yyyy-mm-dd`), `note`. Bắt đầu module thì chuyển `in_progress`; push xong thì `review`; PR merge thì `done`.
+
 Không tính: file sinh tự động (`bin/`, `obj/`), file scaffold trong `Domain/Entities/` (chỉ ghi "scaffold lại, N entity"), script test tạm trong scratchpad.
 
 ## Database-first
