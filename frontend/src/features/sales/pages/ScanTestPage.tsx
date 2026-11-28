@@ -1,6 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { login, type AuthResponse } from '../../../api/auth'
 import { getProductByBarcode, type ProductBarcodeResponse } from '../../../api/catalog'
 import { ApiError } from '../../../api/types'
 import { decodeImageFile, getNativeDetector } from '../../../lib/barcodeDetector'
@@ -41,7 +40,6 @@ function sourceLabel(engine: ScanResult['engine']): string {
 
 export function ScanTestPage() {
   const queryClient = useQueryClient()
-  const [session, setSession] = useState<AuthResponse | null>(null)
   const [engine, setEngine] = useState<ScanEngine>('wasm')
   const [running, setRunning] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -53,11 +51,6 @@ export function ScanTestPage() {
   const last = useRef<{ code: string; at: number } | null>(null)
   const nextId = useRef(1)
   const audio = useRef<AudioContext | null>(null)
-
-  const signIn = useMutation({
-    mutationFn: login,
-    onSuccess: (data) => setSession(data),
-  })
 
   const hasNative = getNativeDetector() !== undefined
   const latest = results[0]
@@ -98,10 +91,8 @@ export function ScanTestPage() {
     setFlashKey((key) => key + 1)
 
     const id = nextId.current++
-    const token = session?.accessToken
-    const entry: ScanResult = { id, engine: source, code, scanMs, isFirst, lookup: token ? 'pending' : 'skipped' }
+    const entry: ScanResult = { id, engine: source, code, scanMs, isFirst, lookup: 'pending' }
     setResults((list) => [entry, ...list].slice(0, 30))
-    if (!token) return
 
     // Tra mã qua TanStack Query: quét lại cùng mã trong 30 giây thì lấy từ bộ nhớ đệm, không gọi API.
     const queryKey = ['products', 'barcode', code]
@@ -109,7 +100,7 @@ export function ScanTestPage() {
     void measure(() =>
       queryClient.fetchQuery({
         queryKey,
-        queryFn: ({ signal }) => getProductByBarcode(code, { accessToken: token, signal }),
+        queryFn: ({ signal }) => getProductByBarcode(code, signal),
       }),
     ).then((outcome) => {
       if (outcome.ok) {
@@ -155,12 +146,6 @@ export function ScanTestPage() {
     input.value = ''
   }
 
-  function submitLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    signIn.mutate({ phone: String(form.get('phone') ?? ''), password: String(form.get('password') ?? '') })
-  }
-
   const cameraReads = results.filter((r) => r.engine === engine)
   const average = (values: number[]) => (values.length ? `${Math.round(values.reduce((a, b) => a + b, 0) / values.length)} ms` : '—')
   const firstAverage = average(cameraReads.filter((r) => r.isFirst && r.scanMs !== null).map((r) => r.scanMs ?? 0))
@@ -170,25 +155,6 @@ export function ScanTestPage() {
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">Thử quét mã vạch</h1>
-
-      {session ? (
-        <p className="text-sm text-ink-muted">Đã đăng nhập: {session.user.name}. Quét xong sẽ tra mã trong danh mục.</p>
-      ) : (
-        <form onSubmit={submitLogin} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3">
-          <p className="text-sm text-ink-muted">Đăng nhập để tra mã trong danh mục (không bắt buộc để đo tốc độ).</p>
-          <div className="flex flex-wrap gap-2">
-            <input name="phone" inputMode="tel" placeholder="Số điện thoại" defaultValue="0900000001" aria-label="Số điện thoại"
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-line px-3" />
-            <input name="password" type="password" placeholder="Mật khẩu" aria-label="Mật khẩu"
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-line px-3" />
-            <button type="submit" disabled={signIn.isPending}
-              className="min-h-11 rounded-lg bg-brand-600 px-4 font-medium text-white disabled:opacity-60">
-              {signIn.isPending ? 'Đang vào…' : 'Đăng nhập'}
-            </button>
-          </div>
-          {signIn.isError && <p className="text-sm text-bad">{signIn.error.message}</p>}
-        </form>
-      )}
 
       <div role="radiogroup" aria-label="Thư viện quét" className="grid grid-cols-2 gap-1 rounded-xl bg-line p-1">
         {ENGINES.map((item) => {
