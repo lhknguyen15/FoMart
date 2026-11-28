@@ -24,6 +24,13 @@ public sealed class ProductRepository(FoMartDbContext dbContext)
             query = query.Where(p => p.CategoryId == categoryId);
         if (!string.IsNullOrWhiteSpace(request.Status))
             query = query.Where(p => p.Status == request.Status);
+        query = request.StockFilter switch
+        {
+            ProductStockFilter.NeedsCount => query.Where(p => p.NeedsCount),
+            ProductStockFilter.Negative => query.Where(p => (DbContext.Stocks.Where(s => s.ProductId == p.Id).Sum(s => (int?)s.Qty) ?? 0) < 0),
+            ProductStockFilter.Low => query.Where(p => p.MinStock > 0 && (DbContext.Stocks.Where(s => s.ProductId == p.Id).Sum(s => (int?)s.Qty) ?? 0) < p.MinStock),
+            _ => query,
+        };
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query
@@ -39,7 +46,8 @@ public sealed class ProductRepository(FoMartDbContext dbContext)
                 p.ProductUnits.Where(u => u.IsBase).Select(u => u.SalePrice).FirstOrDefault(),
                 p.ProductUnits.Where(u => u.IsBase).Select(u => u.Barcode).FirstOrDefault(),
                 DbContext.Stocks.Where(s => s.ProductId == p.Id).Sum(s => (int?)s.Qty) ?? 0,
-                p.NeedsCount))
+                p.NeedsCount,
+                p.MinStock))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ProductListItemResponse>(items, request.Page, request.PageSize, total);

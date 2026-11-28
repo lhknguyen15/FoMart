@@ -10,6 +10,7 @@ public static class CatalogResponseMessageDTO
     public const string ProductNotFound = "Không tìm thấy sản phẩm.";
     public const string BarcodeNotFound = "Mã vạch chưa có trong danh mục.";
     public const string InvalidProductStatus = "Trạng thái sản phẩm không hợp lệ (active, inactive, incomplete).";
+    public const string InvalidStockFilter = "Bộ lọc tồn không hợp lệ (needs_count, negative, low).";
     public const string QuickButtonTaken = "Vị trí nút bấm nhanh này đã được sản phẩm khác dùng.";
     public const string BarcodeAlreadyUsed = "Mã vạch đã thuộc sản phẩm khác: {0}.";
     public const string PriceWarningNeedsConfirm = "Cảnh báo giá: {0}. Gửi lại với ConfirmPriceWarning = true nếu giá này là đúng.";
