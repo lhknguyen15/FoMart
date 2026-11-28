@@ -1,4 +1,4 @@
-import { CalendarXIcon, PackageIcon, ReceiptIcon, ShoppingCartIcon, WarehouseIcon, type Icon } from '@phosphor-icons/react'
+import { CalendarXIcon, PackageIcon, TrashIcon, ReceiptIcon, ShoppingCartIcon, WarehouseIcon, type Icon } from '@phosphor-icons/react'
 import { NavLink } from 'react-router'
 import type { UserRole } from '../api/auth'
 import { useAuthStore } from '../stores/useAuthStore'
@@ -18,6 +18,7 @@ const items: NavItem[] = [
   { to: '/nhap-hang', label: 'Nhập hàng', Icon: PackageIcon },
   { to: '/ton-kho', label: 'Tồn kho', Icon: WarehouseIcon },
   { to: '/han-dung', label: 'Hạn dùng', Icon: CalendarXIcon, sidebarOnly: true },
+  { to: '/xuat-huy', label: 'Xuất hủy', Icon: TrashIcon, sidebarOnly: true },
 ]
 
 const visibleFor = (role: UserRole | undefined) => items.filter((item) => !item.ownerOnly || role === 'owner')

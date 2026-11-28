@@ -17,11 +17,13 @@ interface DataTableProps<T> {
   dimmed?: boolean // đang tải bộ lọc mới: làm mờ dữ liệu cũ
   // Có thì dưới 1024px hiện danh sách thẻ (nội dung một thẻ do nơi dùng vẽ), từ 1024px hiện bảng (DESIGN.md > Tables).
   renderCard?: (row: T) => ReactNode
+  // Nút thao tác đặt cạnh thẻ (không lồng trong liên kết của thẻ, HTML không cho lồng liên kết).
+  cardAction?: (row: T) => ReactNode
 }
 
 // Bảng dữ liệu cho khung quản lý trên máy tính (DESIGN.md > Tables): viền tóc, hàng tiêu đề nền giấy,
 // kẻ ngang, cột số căn phải. Cả hàng bấm được; ô đầu là liên kết thật để dùng bằng bàn phím.
-export function DataTable<T>({ caption, rows, columns, rowKey, rowHref, dimmed = false, renderCard }: DataTableProps<T>) {
+export function DataTable<T>({ caption, rows, columns, rowKey, rowHref, dimmed = false, renderCard, cardAction }: DataTableProps<T>) {
   const navigate = useNavigate()
 
   return (
@@ -31,14 +33,15 @@ export function DataTable<T>({ caption, rows, columns, rowKey, rowHref, dimmed =
           {rows.map((row) => {
             const href = rowHref?.(row)
             return (
-              <li key={rowKey(row)} className="border-b border-line last:border-b-0">
+              <li key={rowKey(row)} className="flex items-center border-b border-line last:border-b-0">
                 {href ? (
-                  <Link to={href} className="flex min-h-14 flex-col gap-0.5 px-3 py-2.5 active:bg-brand-50">
+                  <Link to={href} className="flex min-h-14 min-w-0 flex-1 flex-col gap-0.5 px-3 py-2.5 active:bg-brand-50">
                     {renderCard(row)}
                   </Link>
                 ) : (
-                  <div className="flex flex-col gap-0.5 px-3 py-2.5">{renderCard(row)}</div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-2.5">{renderCard(row)}</div>
                 )}
+                {cardAction && <div className="shrink-0 pr-3">{cardAction(row)}</div>}
               </li>
             )
           })}

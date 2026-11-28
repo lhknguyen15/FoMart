@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import type { StockExpiryFilter, StockLotResponse } from '../../../api/inventory'
 import { ChoiceChips, type Choice } from '../../../components/ui/ChoiceChips'
 import { DataTable, type DataColumn } from '../../../components/ui/DataTable'
 import { formatDate, formatMoney, todayInVietnam } from '../../../lib/format'
+import { usePendingDisposalCount } from '../hooks/useDisposals'
 import { useExpiringLots, useExpirySummary } from '../hooks/useStock'
 
 const filterChoices: Choice<StockExpiryFilter>[] = [
@@ -27,6 +29,28 @@ function DaysLeft({ lot, today }: { lot: StockLotResponse; today: string }) {
   return <span className={`${badge} bg-warn/10 text-warn`}>Còn {days} ngày</span>
 }
 
+// Mở form lập phiếu hủy điền sẵn lô này (số lượng = toàn bộ tồn của lô; lý do "hết hạn" nếu đã quá hạn).
+function DisposeLink({ lot, today }: { lot: StockLotResponse; today: string }) {
+  const expired = lot.expiryDate !== null && daysLeft(lot.expiryDate, today) < 0
+  const query = new URLSearchParams({
+    productId: String(lot.productId),
+    locationId: String(lot.locationId),
+    lotId: String(lot.lotId),
+    qty: String(lot.qty),
+    reason: expired ? 'expired' : 'other',
+  })
+  return (
+    <Link
+      to={`/xuat-huy/moi?${query.toString()}`}
+      onClick={(event) => event.stopPropagation()}
+      aria-label={`Lập phiếu hủy ${lot.productName} ${lotLabel(lot)}`}
+      className="flex min-h-11 items-center rounded-lg border border-bad/50 px-3 text-sm font-semibold text-bad active:bg-bad/10"
+    >
+      Hủy
+    </Link>
+  )
+}
+
 const lotLabel = (lot: StockLotResponse) => (lot.lotNo ? `Lô ${lot.lotNo}` : 'Lô không số')
 // Giá trị tồn theo giá vốn của lô (BR-11: làm tròn về đồng khi hiển thị); null khi bị ẩn giá vốn (BR-08).
 const lotValue = (lot: StockLotResponse) => (lot.unitCost !== null ? Math.round(lot.unitCost * lot.qty) : null)
@@ -36,6 +60,7 @@ const lotValue = (lot: StockLotResponse) => (lot.unitCost !== null ? Math.round(
 export function StockExpiryPage() {
   const [filter, setFilter] = useState<StockExpiryFilter>('warning')
   const summary = useExpirySummary()
+  const pendingCount = usePendingDisposalCount().data
   const lots = useExpiringLots(filter)
   const today = todayInVietnam()
   const rows = lots.data?.pages.flatMap((page) => page.items) ?? []
@@ -51,6 +76,7 @@ export function StockExpiryPage() {
     { header: 'Vị trí', cell: (lot) => lot.locationName },
     { header: 'Tồn', cell: (lot) => `${lot.qty} ${lot.baseUnitName}`, align: 'right' },
     ...(showValue ? [{ header: 'Giá trị (vốn)', cell: (lot: StockLotResponse) => { const value = lotValue(lot); return value !== null ? formatMoney(value) : '—' }, align: 'right' as const }] : []),
+    { header: 'Xử lý', cell: (lot) => <DisposeLink lot={lot} today={today} /> },
   ]
 
   return (
@@ -58,9 +84,12 @@ export function StockExpiryPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold">Hạn dùng</h1>
         <p className="text-sm text-ink-muted">
-          Lô còn tồn đã hết hạn và lô hết hạn trong {warnDays} ngày tới. Đưa hàng sắp hết hạn ra trước hoặc giảm giá; hàng đã hết hạn thì cất khỏi kệ và lập
-          phiếu xuất hủy (sắp có).
+          Lô còn tồn đã hết hạn và lô hết hạn trong {warnDays} ngày tới. Đưa hàng sắp hết hạn ra trước hoặc giảm giá; hàng đã hết hạn thì cất khỏi kệ và
+          bấm "Hủy" để lập phiếu xuất hủy.
         </p>
+        <Link to="/xuat-huy" className="flex min-h-11 items-center self-start text-sm font-semibold text-brand-700 underline-offset-4 hover:underline">
+          Phiếu xuất hủy{pendingCount ? ` · ${pendingCount} chờ duyệt` : ''}
+        </Link>
       </div>
 
       {summary.data && (
@@ -112,6 +141,7 @@ export function StockExpiryPage() {
           rowKey={(lot) => `${lot.lotId}-${lot.locationId}`}
           rowHref={(lot) => `/ton-kho/${lot.productId}`}
           dimmed={lots.isPlaceholderData}
+          cardAction={(lot) => <DisposeLink lot={lot} today={today} />}
           renderCard={(lot) => (
             <>
               <span className="flex items-baseline justify-between gap-2">

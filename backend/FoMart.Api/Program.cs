@@ -109,6 +109,7 @@ try
     builder.Services.AddScoped<SupplierService>();
     builder.Services.AddScoped<LocationService>();
     builder.Services.AddScoped<GoodsReceiptService>();
+    builder.Services.AddScoped<DisposalService>();
     builder.Services.AddScoped<StockService>();
     builder.Services.AddScoped<SaleService>();
 
