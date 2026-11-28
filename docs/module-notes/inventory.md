@@ -165,3 +165,58 @@ Nhánh `feature/inventory-expiry-screen`. UC-08 (phần "Màn hình hạn dùng"
   - Tổng hợp 1 lô / 10 chai / 40.000đ và 3 lô / 11 chai / 44.000đ; nhân viên thấy số lô nhưng không thấy giá trị.
   - Bán 6 chai: FEFO bỏ lô quá hạn, trừ hết lô TODAY rồi 1 chai lô D2; danh sách và tổng hợp cập nhật; phân trang; đối soát sổ kho rỗng.
   - Ảnh chụp trang Hạn dùng, lọc "Đã hết hạn", dòng nhắc trang Tồn kho ở 412 / 1024 / 1912px.
+
+### 28/11/2026 – Xuất hủy (UC-08, SC-12)
+
+Nhánh `feature/inventory-disposal`. UC-08, BR-02, BR-03, BR-08, BR-11, BR-15, BR-21. Giai đoạn 3.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `backend/FoMart.Domain/Enums/DisposalStatus.cs`, `DisposalReason.cs` | Hằng số trùng CHECK: `pending` / `approved` / `rejected`; `expired` / `broken` / `damaged` / `other` |
+| `backend/FoMart.Domain/Rules/DisposalAllocator.cs` | Chọn lô khi hủy: đúng lô đã chọn, hoặc hạn dùng sớm nhất trước (lô hết hạn tự đứng đầu), lô không hạn sau cùng, rồi FIFO; **không cho tồn âm** (thiếu thì trả `Available`); `LossTotal` theo giá vốn |
+| `backend/FoMart.Application/DTO/Inventory/DisposalModels.cs` | Request / response phiếu hủy, dòng, lô đã trừ, từ chối |
+| `backend/FoMart.Application/Interfaces/Repositories/IDisposalRepository.cs`, `Infrastructure/Repositories/DisposalRepository.cs` | Tìm phiếu (tổn thất cộng từ sổ kho), lấy phiếu kèm dòng, sổ kho của phiếu |
+| `backend/FoMart.Application/Services/Inventory/DisposalService.cs` | Lập (chủ tiệm duyệt ngay, nhân viên chờ), duyệt, từ chối; trừ tồn trong một transaction: khóa sản phẩm, khóa dòng tồn theo lô, chia lô, ghi `stock_moves` loại `disposal` |
+| `backend/FoMart.Api/Controllers/Inventory/DisposalController.cs` | `GET /api/disposals`, `GET /{id}`, `POST`, `POST /{id}/approve` và `/{id}/reject` (chỉ chủ tiệm) |
+| `frontend/src/features/inventory/hooks/useDisposals.ts` | `disposalKeys`; danh sách (`useInfiniteQuery`), số phiếu chờ duyệt, chi tiết; lập / duyệt / từ chối làm mới phiếu, tồn, sản phẩm |
+| `features/inventory/schemas/disposalSchema.ts` | Schema dòng đang soạn, dòng đã thêm, cả phiếu (ít nhất 1 dòng), lý do từ chối |
+| `features/inventory/components/DisposalLineEditor.tsx` | Soạn một dòng: vị trí, lô (hoặc để hệ thống chọn), đơn vị + số lượng (quy ra đơn vị cơ sở), lý do, ghi chú; hiện số còn trong hệ thống, báo trước khi không đủ |
+| `features/inventory/components/DisposalStatusBadge.tsx` | Nhãn chữ Chờ duyệt / Đã hủy / Từ chối |
+| `features/inventory/pages/DisposalListPage.tsx` | `/xuat-huy`: lọc trạng thái, bảng / thẻ, "Lập phiếu hủy" |
+| `features/inventory/pages/DisposalCreatePage.tsx` | `/xuat-huy/moi`: quét / tìm hàng, nhiều dòng (`useFieldArray`), điền sẵn từ trang Hạn dùng qua `?productId=&locationId=&lotId=&qty=&reason=`; nút "Lưu và trừ tồn" (chủ tiệm) / "Gửi chủ tiệm duyệt" (nhân viên) |
+| `features/inventory/pages/DisposalDetailPage.tsx` | `/xuat-huy/:id`: tổn thất, người lập / duyệt, các dòng và lô đã trừ; chủ tiệm duyệt hoặc từ chối kèm lý do |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `IUnitOfWork.cs`, `UnitOfWork.cs`, `Program.cs` | `DisposalRepository`, `DisposalService` |
+| `InventoryResponseMessageDTO.cs` | Thông báo xuất hủy (có số còn khi thiếu hàng) |
+| `frontend/src/api/inventory.ts`, `lib/format.ts` | Kiểu + hàm gọi `api/disposals`; `formatDisposalReason` |
+| `components/ui/DataTable.tsx` | `cardAction`: nút đặt cạnh thẻ trên điện thoại (không lồng liên kết trong liên kết) |
+| `features/inventory/pages/StockExpiryPage.tsx` | Cột / nút "Hủy" mỗi lô mở form điền sẵn (lý do "Hết hạn" nếu đã quá hạn); link "Phiếu xuất hủy · n chờ duyệt" |
+| `features/inventory/pages/StockListPage.tsx` | Link "Hạn dùng", "Xuất hủy · n chờ duyệt" cạnh tiêu đề (cách vào trên điện thoại) |
+| `frontend/src/app/AppNav.tsx`, `router.tsx` | Mục "Xuất hủy" ở menu bên; 3 route tải lười |
+| `CLAUDE.md` | Trạng thái |
+
+**Ghi chú**
+
+- **Quyết định:**
+  - **Hủy không cho tồn âm** (khác bán hàng BR-01, giống chuyển kho): thiếu thì 409 kèm số còn, gợi ý kiểm kê trước. Lập phiếu của chủ tiệm mà thiếu thì không lưu gì (rollback); phiếu chờ mà lúc duyệt đã thiếu thì vẫn giữ trạng thái chờ.
+  - **Không chọn lô** thì lấy hạn sớm nhất (lô đã hết hạn tự đứng trước); chọn lô (từ trang Hạn dùng) thì chỉ trừ đúng lô đó.
+  - **Nhập theo đơn vị bất kỳ** (chai, thùng), gửi API theo đơn vị cơ sở.
+  - **Hai chủ tiệm duyệt cùng lúc:** khóa sản phẩm + `row_version` của phiếu → người sau nhận 409.
+  - **Tổn thất** = số lượng × giá vốn lô, làm tròn một lần về đồng (`MoneyRules`); ẩn với nhân viên khi tiệm ẩn giá vốn (BR-08).
+  - Phiếu đã duyệt / từ chối không sửa (BR-03); chưa có "hủy phiếu hủy" (đảo ngược) vì chưa cần.
+- **Lỗi phát hiện khi làm:**
+  1. Đọc lại service: lúc lập, entity mới chưa nạp sản phẩm / vị trí nên thông báo thiếu hàng sẽ lỗi null; lúc duyệt thiếu tên người duyệt. Sửa: nạp lại phiếu trước khi trừ tồn và sau khi commit.
+  2. Form soạn dòng là `<form>` lồng trong form của phiếu (HTML không cho lồng): tách, chỉ cột phải là form của phiếu.
+  3. Ô chọn lô điền sẵn hiện "Để hệ thống chọn" vì danh sách lô tải sau khi ô đã vẽ (giá trị gửi đi vẫn đúng): chuyển sang điều khiển bằng `value`.
+  4. Lệnh `node -e` có dấu backtick bị shell hiểu sai: sửa bằng Edit.
+  5. **Lỗi có từ trước, chưa sửa trong nhánh này:** thời điểm đọc từ DB (`DATETIME2` UTC) được trả JSON không có `Z`, trình duyệt hiểu là giờ máy nên hiện sớm 7 tiếng (thấy rõ ở phiếu: "Lập 11:07", "Duyệt 18:07" cùng một lúc vì `DecidedAt` gán trong code còn mang `Kind = Utc`). Ảnh hưởng mọi màn hình; sửa ở nhánh `fix/*` tiếp theo.
+- **Hạn chế:** chưa có màn hình tổng tổn thất theo kỳ (báo cáo UC-10, giai đoạn 4); chưa đính ảnh hàng bể.
+- **Test:** backend build 0 cảnh báo; `npm run build` + `npm run lint` sạch. Database tạm `FoMart_DisposalTest` (đã xóa):
+  - 31/31 kịch bản HTTP qua proxy Vite: chủ tiệm lập → duyệt ngay, tổn thất 16.000đ, lô EXP còn 6; nhân viên lập → chờ, tồn không đổi, không thấy giá vốn; nhân viên tự duyệt 403; chủ tiệm duyệt → tổn thất 24.000đ; duyệt / từ chối lần 2 → 409; từ chối giữ tồn; không chọn lô → trừ lô hạn sớm nhất; hủy 50 khi còn 9 → 409 "chỉ còn 9", hai dòng cộng lại vượt tồn → 409 ở dòng 2, không lưu phiếu; phiếu chờ mà tồn bị bán bớt → duyệt 409, vẫn chờ; lý do sai / lô không thuộc sản phẩm / không có dòng / lọc sai → 400; thẻ kho có dòng `XH…`; đối soát sổ kho rỗng.
+  - Thao tác giao diện một lần bằng Edge (Hạn dùng → Hủy → lưu; nhân viên lập trên điện thoại → gửi duyệt; chủ tiệm từ chối; duyệt khi thiếu hàng hiện thông báo); sau đó theo yêu cầu người dùng chỉ chạy kiểm tra giao diện khi được yêu cầu.

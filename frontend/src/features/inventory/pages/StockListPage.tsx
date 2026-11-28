@@ -6,6 +6,7 @@ import { ChoiceChips, type Choice } from '../../../components/ui/ChoiceChips'
 import { DataTable, type DataColumn } from '../../../components/ui/DataTable'
 import { useProductBrowse } from '../../catalog/hooks/useProducts'
 import { StockBadges } from '../components/StockBadges'
+import { usePendingDisposalCount } from '../hooks/useDisposals'
 import { useExpirySummary } from '../hooks/useStock'
 
 const filterChoices: Choice<ProductStockFilter>[] = [
@@ -36,13 +37,25 @@ export function StockListPage() {
   const [keyword, setKeyword] = useState('')
   const [filter, setFilter] = useState<ProductStockFilter | ''>('')
   const summary = useExpirySummary()
+  const pendingDisposals = usePendingDisposalCount().data
   const products = useProductBrowse({ keyword: keyword.trim() || undefined, stockFilter: filter || undefined, pageSize: 30 })
   const items = products.data?.pages.flatMap((page) => page.items) ?? []
   const totalCount = products.data?.pages[0]?.totalCount ?? 0
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 lg:max-w-none">
-      <h1 className="text-2xl font-bold">Tồn kho</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="text-2xl font-bold">Tồn kho</h1>
+        {/* Trên điện thoại các màn hình phụ (Hạn dùng, Xuất hủy) vào từ đây; trên máy tính có thêm ở menu bên. */}
+        <span className="flex gap-4 text-sm font-semibold">
+          <Link to="/han-dung" className="flex min-h-11 items-center text-brand-700 underline-offset-4 hover:underline">
+            Hạn dùng
+          </Link>
+          <Link to="/xuat-huy" className="flex min-h-11 items-center text-brand-700 underline-offset-4 hover:underline">
+            Xuất hủy{pendingDisposals ? ` · ${pendingDisposals} chờ duyệt` : ''}
+          </Link>
+        </span>
+      </div>
 
       {summary.data && summary.data.expiredLots + summary.data.nearLots > 0 && (
         <Link

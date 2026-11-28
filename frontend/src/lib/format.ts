@@ -41,3 +41,8 @@ export function formatPaymentMethod(method: 'cash' | 'transfer'): string {
 export function formatTime(value: string): string {
   return timeFormat.format(new Date(value))
 }
+
+// Lý do xuất hủy (UC-08): "expired" → "Hết hạn"...
+export function formatDisposalReason(reason: 'expired' | 'broken' | 'damaged' | 'other'): string {
+  return { expired: 'Hết hạn', broken: 'Bể vỡ', damaged: 'Hư hỏng', other: 'Khác' }[reason]
+}
