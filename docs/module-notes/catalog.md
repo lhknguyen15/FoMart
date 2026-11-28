@@ -61,3 +61,12 @@ Nhánh `feature/catalog-api` · PR #2 (lỡ merge vào `main`; `develop` đã đ
 ### 25/11/2026 – Phân quyền theo vai trò
 
 Nhánh `feature/auth-jwt`. Thao tác ghi của 4 controller Catalog gắn `[Authorize(Roles = UserRole.Owner)]`; đọc thì ai đăng nhập cũng được. `ProductController` đọc user từ claim `sub`. Chi tiết ở `auth.md`.
+
+### 28/11/2026 – Chuẩn hóa mã vạch UPC-A → EAN-13
+
+Nhánh `feature/sales-pos-screen`. ADR-0003 mục 4, BR-20.
+
+- **File mới:** `Domain/Rules/BarcodeRules.cs` (`Normalize`: bỏ khoảng trắng, rỗng → null, 12 chữ số → thêm "0" đầu).
+- **File sửa:** `Application/Services/Catalog/ProductService.cs`. Khai báo mã (tạo sản phẩm, thêm/sửa đơn vị) và tra mã `GET /api/products/barcode/{code}` đều đi qua `BarcodeRules.Normalize`.
+- **Test:** tạo đơn vị với `123456789012` thì lưu `0123456789012`; tra bằng 12 hay 13 số đều ra cùng đơn vị; khai báo `0123456789012` cho sản phẩm khác bị chặn 409.
+- **Hạn chế:** mã 12 số đã lưu trước thay đổi này (nếu có) không tự đổi. Dữ liệu mẫu dùng EAN-13 nên không ảnh hưởng.

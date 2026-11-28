@@ -1,6 +1,6 @@
 # Đặc tả hệ thống quản lý tiệm tạp hóa
 
-Cập nhật: 25/11/2026 · Bản gốc có sơ đồ: https://claude.ai/artifact/DszUWnwqBqLE91zYA5Nd2v
+Cập nhật: 28/11/2026 · Bản gốc có sơ đồ: https://claude.ai/artifact/DszUWnwqBqLE91zYA5Nd2v
 
 ## 1. Tổng quan
 
@@ -34,7 +34,7 @@ Từ ngày 1/1/2026, hộ kinh doanh không còn nộp thuế khoán mà tự k�
 | 1 | Thiết bị | Không cố định thiết bị. Điện thoại có camera là mức tối thiểu, hỗ trợ thêm máy quét USB/Bluetooth |
 | 2 | Đơn vị tính | Tồn kho tính theo đơn vị cơ sở, giá bán đặt riêng cho từng đơn vị |
 | 3 | Ghi nhận bán | Phương án C: bán hàng nhanh, xuất hủy cho hư hỏng đã biết, kiểm kê định kỳ cho sai lệch chưa biết |
-| 4 | Thanh toán | Tiền mặt hoặc chuyển khoản VietQR, nhân viên tự xác nhận |
+| 4 | Thanh toán | Tiền mặt hoặc chuyển khoản VietQR. Mặc định nhân viên tự xác nhận; tiệm có thể bật tự xác nhận qua SePay (ADR-0004, giai đoạn 5) |
 | 5 | Đối tượng | Cả tiệm truyền thống lẫn minimart nhỏ, khác nhau bằng cấu hình |
 
 ## 2. Phạm vi
@@ -46,7 +46,7 @@ Phiên bản 1 phục vụ một cửa hàng duy nhất, từ 1 đến khoảng 
 - Danh mục: sản phẩm, nhóm hàng, đơn vị quy đổi, mã vạch, nhà cung cấp, vị trí.
 - Nhập hàng, có hoặc không có phiếu đặt hàng trước.
 - Bán hàng nhanh bằng quét mã, nút bấm nhanh hoặc tìm theo tên.
-- Thanh toán tiền mặt hoặc chuyển khoản VietQR, xác nhận thủ công.
+- Thanh toán tiền mặt hoặc chuyển khoản VietQR, xác nhận thủ công; tùy chọn tự xác nhận qua webhook SePay (ADR-0004).
 - Quản lý lô và hạn dùng, trừ kho theo FEFO hoặc FIFO.
 - Chuyển hàng giữa các vị trí (kho sau sang kệ).
 - Xuất hủy hàng bể, hư, hết hạn.
@@ -59,7 +59,7 @@ Phiên bản 1 phục vụ một cửa hàng duy nhất, từ 1 đến khoảng 
 
 - Nhiều chi nhánh.
 - Kế toán, công nợ nhà cung cấp, kê khai thuế, hóa đơn điện tử.
-- Tự động xác nhận chuyển khoản qua ngân hàng hoặc cổng thanh toán.
+- Tích hợp trực tiếp API ngân hàng hoặc cổng thanh toán thu hộ (VNPay, MoMo). Tự xác nhận qua SePay thì nằm trong phạm vi, xem ADR-0004.
 - Khách trả hàng, đổi hàng.
 - Hàng bán theo cân ký.
 - Tích điểm, khuyến mãi, khách hàng thân thiết.
@@ -197,7 +197,7 @@ Bán hàng luôn trừ ở kệ bán; tiệm chỉ có một vị trí thì kho 
 4. Tổng tiền hiển thị lớn, cập nhật sau mỗi lần quét.
 5. Thanh toán:
    - **Tiền mặt** (mặc định): bấm “Xong”. Có thể chọn nhanh mệnh giá khách đưa để xem tiền thối, không bắt buộc.
-   - **Chuyển khoản:** hiện mã VietQR có sẵn số tiền và nội dung là mã hóa đơn. Khách chuyển xong, người bán bấm “Đã nhận”.
+   - **Chuyển khoản:** hiện mã VietQR có sẵn số tiền và nội dung là mã hóa đơn. Khách chuyển xong, người bán bấm “Đã nhận”. Tiệm bật SePay thì hóa đơn tự xác nhận khi tiền về đúng mã và đủ số tiền; nút “Đã nhận” vẫn giữ làm dự phòng (ADR-0004).
 6. Hệ thống lưu hóa đơn, quy đổi ra đơn vị cơ sở, trừ tồn tại vị trí kệ bán theo FEFO/FIFO (BR-04), ghi giá vốn theo lô bị trừ, rồi quay về màn hình quét trống.
 
 **Nhánh phụ và ngoại lệ**
@@ -462,7 +462,7 @@ Làm trọn luồng của tiệm truyền thống (một người, một vị tr
 2. **Giai đoạn 2 – Nhập và bán (tuần 3–5).** Nhập hàng tạo lô, bán hàng tiền mặt và VietQR, trừ kho FEFO/FIFO, sổ biến động, thẻ kho, danh sách hóa đơn. Đây là mốc “dùng thử được”.
 3. **Giai đoạn 3 – Giữ dữ liệu đúng (tuần 6–7).** Xuất hủy, màn hình hạn dùng, kiểm kê và duyệt chênh lệch, hủy hóa đơn, hủy phiếu nhập.
 4. **Giai đoạn 4 – Báo cáo và đặt hàng (tuần 8–9).** Tổng quan, doanh thu, lãi gộp, bán chạy, tồn lâu, tổn thất, tỷ lệ ghi nhận, gợi ý và phiếu đặt hàng.
-5. **Giai đoạn 5 – Minimart (tuần 10–11).** Tài khoản nhân viên, PIN đổi ca, phân quyền và duyệt, nhiều vị trí, chuyển kho, hỗ trợ máy quét dạng bàn phím.
+5. **Giai đoạn 5 – Minimart (tuần 10–11).** Tài khoản nhân viên, PIN đổi ca, phân quyền và duyệt, nhiều vị trí, chuyển kho, hỗ trợ máy quét dạng bàn phím, SignalR, tự xác nhận chuyển khoản qua SePay (ADR-0004).
 6. **Giai đoạn 6 – Hoàn thiện (tuần 12 trở đi).** Chế độ ngoại tuyến, PWA, xuất Excel, kiểm thử tải và chạy thử tại một tiệm thật.
 
 **Kiểm thử cần có cho mỗi giai đoạn:** tổng `stock_moves` luôn bằng `stock`; bán thùng trừ đúng 24 lon; FEFO trừ đúng lô; hai máy bán cùng lúc không sai tồn; hóa đơn ngoại tuyến đồng bộ không bị trùng.
@@ -473,7 +473,6 @@ Làm trọn luồng của tiệm truyền thống (một người, một vị tr
 
 - Khách trả hàng, đổi hàng.
 - Hàng bán theo cân ký, in mã nội bộ bắt đầu bằng số 2 theo chuẩn GS1.
-- Tự động xác nhận chuyển khoản qua ngân hàng hoặc cổng thanh toán.
 - Máy in hóa đơn nhiệt, ngăn kéo tiền.
 - Công nợ nhà cung cấp và khách quen (ghi sổ nợ).
 - Hỗ trợ kê khai thuế theo doanh thu và hóa đơn điện tử khởi tạo từ máy tính tiền.

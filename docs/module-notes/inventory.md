@@ -49,3 +49,78 @@ Nhánh `feature/purchasing-goods-receipt`. Chưa có chuyển kho, xuất hủy,
   - Thẻ kho tính số dư bằng subquery theo từng dòng; đủ nhanh với quy mô tiệm, dữ liệu lớn thì chuyển sang `SUM() OVER`.
   - Chưa đặt `needs_count`, chưa có lô tạm (làm cùng bán hàng).
 - **Test:** chạy chung 64 kịch bản của `purchasing.md`. Sau mỗi bước nhập, hủy, chuyển kho mô phỏng, đối soát sổ kho đều rỗng.
+
+### 27/11/2026 – Trừ kho cho bán hàng
+
+Nhánh `feature/sales-checkout` (cùng `sales.md`).
+
+**File mới:** `Domain/Rules/FefoAllocator.cs` (thứ tự chia lô xem `sales.md`).
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `Application/Interfaces/Repositories/IStockRepository.cs`, `Infrastructure/Repositories/StockRepository.cs` | Thêm `LockProductsAsync`, `GetLotStocksAsync`, `GetProvisionalLotIdAsync`, `MarkNeedsCountAsync`, `GetSaleMovesAsync`; lớp nội bộ `LotStockRow` đọc kết quả SQL |
+
+**Ghi chú**
+
+- **Khóa:** khóa `products` trước rồi mới khóa `stock`, luôn theo id tăng dần. Hủy phiếu nhập chỉ khóa `stock` theo lô và không khóa `products`, nên hai chiều không chờ vòng lẫn nhau.
+- **Kiểm tra transaction:** `LockLotsAsync`, `LockProductsAsync` và `GetLotStocksAsync` đều ném lỗi nếu không có transaction, vì khóa ngoài transaction thì nhả ngay.
+- **`needs_count`:** bật bằng `ExecuteUpdate` (một câu UPDATE), không nạp entity sản phẩm. `row_version` của sản phẩm vẫn đổi, nên nếu chủ tiệm đang mở form sửa đúng sản phẩm đó thì lần lưu ấy nhận 409 "đã bị thay đổi", phải tải lại.
+
+### 28/11/2026 – Màn hình Tồn kho và thẻ kho
+
+Nhánh `feature/inventory-stock-screen`. SC-06/SC-07 (phần tồn), UC-10 (thẻ kho), BR-01, BR-04, BR-08; UC-08 (cảnh báo hạn dùng, phần xem).
+
+**Thư mục mới**
+
+| Thư mục | Vì sao |
+| --- | --- |
+| `frontend/src/features/inventory/` (`pages/`, `components/`, `hooks/`) | Mảng Inventory phía frontend |
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `frontend/src/api/inventory.ts` | Kiểu `StockLotResponse`, `StockMoveResponse`, `DocType`; `getProductStock`, `getStockMoves` |
+| `features/inventory/hooks/useStock.ts` | `stockKeys` (gốc `['stock']`, bán / nhập / hủy đã làm mới key này), `useProductStock`, `useStockMoves` (`useInfiniteQuery`) |
+| `features/inventory/pages/StockListPage.tsx` | `/ton-kho`: tìm không dấu / mã vạch, lọc Tất cả / Sắp hết / Tồn âm / Cần kiểm kê, bảng trên máy tính, thẻ trên điện thoại, "Xem thêm" |
+| `features/inventory/pages/StockDetailPage.tsx` | `/ton-kho/:productId`: tổng tồn + nhãn, tồn theo vị trí, đơn vị bán; bảng lô đang còn (số lô, HSD, vị trí, ngày nhập, cảnh báo, giá vốn / đơn vị cơ sở nếu được xem); thẻ kho (thời gian, chứng từ, loại, vị trí, lô, +/−, tồn sau, người làm), bấm dòng bán / nhập để mở chứng từ |
+| `features/inventory/components/StockBadges.tsx` | Nhãn chữ: Tồn âm, Sắp hết, Cần kiểm kê, Ngừng bán, Cần bổ sung |
+| `frontend/src/components/ui/ChoiceChips.tsx` | Hàng nút chọn một, tách từ trang Hóa đơn để dùng chung |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `backend/FoMart.Domain/Rules/ExpiryRules.cs` | `ToCode(level)` → `null` / `near_expiry` / `expired`, dùng chung cho phiếu nhập và tồn kho |
+| `backend/FoMart.Application/DTO/Inventory/StockModels.cs` | `StockLotResponse.ExpiryWarning`; `StockMoveResponse.SaleId`, `ReceiptId` |
+| `backend/FoMart.Application/Services/Inventory/StockService.cs` | Điền cảnh báo hạn dùng theo ngày VN + `stores.expiry_warn_days`; ẩn giá vốn như cũ (BR-08) |
+| `backend/FoMart.Infrastructure/Repositories/StockRepository.cs` | Thẻ kho trả id hóa đơn / phiếu nhập gốc |
+| `backend/FoMart.Application/DTO/Catalog/ProductModels.cs`, `CatalogResponseMessageDTO.cs` | `ProductSearchRequest.StockFilter` + `ProductStockFilter` (`needs_count`, `negative`, `low`); `ProductListItemResponse.MinStock`; thông báo bộ lọc sai |
+| `backend/FoMart.Infrastructure/Repositories/ProductRepository.cs`, `Services/Catalog/ProductService.cs` | Lọc theo tổng tồn / `min_stock` / `needs_count`; 400 khi bộ lọc sai |
+| `backend/FoMart.Application/Services/Purchasing/GoodsReceiptService.cs` | Dùng `ExpiryRules.ToCode` thay cho switch riêng |
+| `frontend/src/api/catalog.ts`, `features/catalog/hooks/useProducts.ts` | `stockFilter`, `minStock`; `useProductBrowse` (`useInfiniteQuery`), `useProduct` |
+| `frontend/src/components/ui/DataTable.tsx` | `renderCard`: dưới 1024px hiện danh sách thẻ, từ 1024px hiện bảng; `rowHref` được trả `undefined` (dòng không mở được) |
+| `features/sales/pages/SaleListPage.tsx` | Dùng `ChoiceChips` |
+| `frontend/src/app/AppNav.tsx`, `router.tsx` | Mục "Tồn kho" (icon Warehouse); route tải lười; dưới 640px tab chỉ có chữ để 4 tab vừa một hàng |
+| `DESIGN.md`, `CLAUDE.md` | Quy tắc tab điện thoại; trạng thái |
+
+**Ghi chú**
+
+- **Quyết định:**
+  - Danh sách tồn dựa trên `GET /api/products` (đã có tổng tồn, `needs_count`) thêm bộ lọc ở server, không lọc trên một trang ở máy (sai khi có phân trang).
+  - "Sắp hết" = `min_stock > 0` và tổng tồn < `min_stock`, gồm cả tồn âm; "Tồn âm" là tổng tồn mọi vị trí < 0 (âm ở kệ nhưng kho sau còn thì không âm).
+  - Cảnh báo hạn dùng tính ở server (một quy tắc, một số ngày cảnh báo của cửa hàng) thay vì ở máy.
+  - Trang chi tiết: ba khối tóm tắt một hàng, hai bảng dùng hết chiều ngang; cột phụ ẩn dần (Ngày nhập, Vị trí từ 1280px; Lô, Người làm của thẻ kho từ 1536px).
+- **Impeccable critique + audit** (đánh giá trên code và ảnh chụp ở 412 / 1024 / 1912px): critique lần đầu thấy hai bảng trang chi tiết phải cuộn ngang ở mọi cỡ máy tính, 4 tab tràn trên điện thoại, nhãn cảnh báo kéo dài hết thẻ. Đã sửa cả ba. Audit: A11y 3, Performance 4, Theming 3, Responsive 3, Integrity 4 = 17/20.
+- **Lỗi phát hiện khi làm:**
+  1. `sed` thêm `minStock` khớp cả `ProductResponse` (đã có trường này), tạo dòng trùng: xóa dòng thừa.
+  2. `rowHref` của `DataTable` chỉ nhận `string`; thẻ kho có dòng không có chứng từ mở được: nới kiểu thành `string | undefined`.
+  3. Heredoc của Git Bash nuốt `\` trong regex của script test: dùng `pathToFileURL`.
+- **Hạn chế:** chuyển kho, xuất hủy, kiểm kê chưa có màn hình nên dòng thẻ kho của các chứng từ đó không mở được; chưa lọc thẻ kho theo vị trí / khoảng ngày trên giao diện (API có); chưa quy đổi tồn ra thùng / lốc.
+- **Test:** backend build 0 cảnh báo; `npm run build` + `npm run lint` sạch. Database tạm `FoMart_StockTest` (đã xóa):
+  - 20/20 kịch bản HTTP qua proxy Vite + 2 kịch bản tồn âm thật (bán nước mắm khi tồn 0 → −2, có trong "Tồn âm" và "Sắp hết").
+  - Đã kiểm: lọc sắp hết / cần kiểm kê / bộ lọc sai 400; lô còn 3 ngày → `near_expiry`, hết hạn hôm qua → `expired`, lô xa hạn không cảnh báo; nhân viên không thấy giá vốn nhưng vẫn thấy cảnh báo; lô tạm −5 ở kệ; thẻ kho có `saleId` / `receiptId`, mới nhất trước, tồn sau đúng; hủy hóa đơn tạo dòng `sale_cancel`; đối soát sổ kho rỗng.
+  - FEFO bỏ qua lô đã hết hạn: 2 chai bán ra trừ vào lô NEAR3, không trừ OLD1 (BR-04, BR-05).
+  - Ảnh chụp danh sách, lọc "Sắp hết", chi tiết ở 412px, 1024px, 1912px.

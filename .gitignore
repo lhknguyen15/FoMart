@@ -15,6 +15,9 @@ node_modules/
 dist/
 *.local
 
+# Trạng thái chạy của skill Impeccable (FoMart không dùng engine, phòng khi có file sinh ra)
+.impeccable/
+
 # Editor / OS
 .idea/
 .vscode/*

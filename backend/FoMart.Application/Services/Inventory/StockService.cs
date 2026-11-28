@@ -4,6 +4,7 @@ using FoMart.Application.DTO;
 using FoMart.Application.DTO.Inventory;
 using FoMart.Application.Interfaces.UnitOfWork;
 using FoMart.Domain.Enums;
+using FoMart.Domain.Rules;
 
 namespace FoMart.Application.Services.Inventory;
 
@@ -15,13 +16,24 @@ public sealed class StockService(IUnitOfWork unitOfWork)
     private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
     private static readonly CompositeFormat LedgerMismatchFormat = CompositeFormat.Parse(InventoryResponseMessageDTO.LedgerMismatch);
 
-    // Tồn theo lô và vị trí; lô hết hạn sớm đứng trước. Nhân viên bị ẩn giá vốn thì UnitCost = null (BR-08).
+    // Tồn theo lô và vị trí; lô hết hạn sớm đứng trước. Mỗi lô có cảnh báo hạn dùng (đã hết / sắp hết, UC-08);
+    // nhân viên bị ẩn giá vốn thì UnitCost = null (BR-08).
     public async Task<HTTPResponseData<PagedResult<StockLotResponse>?>> SearchAsync(
         StockSearchRequest request, string? role, CancellationToken cancellationToken)
     {
         var result = await unitOfWork.StockRepository.SearchStockAsync(request, cancellationToken);
-        if (!await CanSeeCostAsync(role, cancellationToken))
-            result = result with { Items = [.. result.Items.Select(i => i with { UnitCost = null })] };
+        var store = await unitOfWork.StoreRepository.GetSettingsAsync(cancellationToken);
+        var canSeeCost = role == UserRole.Owner || store?.StaffCanSeeCost == true;
+        var warnDays = store?.ExpiryWarnDays ?? 7;
+        var today = VietnamToday();
+        result = result with
+        {
+            Items = [.. result.Items.Select(i => i with
+            {
+                UnitCost = canSeeCost ? i.UnitCost : null,
+                ExpiryWarning = ExpiryRules.ToCode(ExpiryRules.Check(i.ExpiryDate, today, warnDays)),
+            })],
+        };
         return HTTPResponse.Success(result, InventoryResponseMessageDTO.SearchStockSuccess);
     }
 
@@ -60,6 +72,9 @@ public sealed class StockService(IUnitOfWork unitOfWork)
         var store = await unitOfWork.StoreRepository.GetSettingsAsync(cancellationToken);
         return store?.StaffCanSeeCost == true;
     }
+
+    private static DateOnly VietnamToday() =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VietnamTimeZone));
 
     // 00:00 giờ Việt Nam của ngày đó, đổi ra UTC.
     private static DateTime? StartOfDayUtc(DateOnly? date) =>

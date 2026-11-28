@@ -1,6 +1,7 @@
 using FoMart.Application.DTO;
 using FoMart.Application.DTO.Inventory;
 using FoMart.Domain.Entities;
+using FoMart.Domain.Rules;
 
 namespace FoMart.Application.Interfaces.Repositories;
 
@@ -15,6 +16,23 @@ public interface IStockRepository : IRepositoryBase<StockMove>
     // Khóa các dòng tồn của những lô này (UPDLOCK, ROWLOCK) theo thứ tự lot_id tăng dần, giữ đến hết transaction.
     // Phải gọi bên trong unitOfWork.BeginWriteAsync (NFR-06).
     Task LockLotsAsync(IReadOnlyCollection<int> lotIds, CancellationToken cancellationToken = default);
+
+    // Khóa dòng sản phẩm (UPDLOCK, ROWLOCK) theo product_id tăng dần, giữ đến hết transaction.
+    // Hai lượt bán cùng sản phẩm phải chờ nhau, kể cả khi vị trí chưa có dòng tồn nào để khóa (NFR-06).
+    Task LockProductsAsync(IReadOnlyCollection<int> productIds, CancellationToken cancellationToken = default);
+
+    // Tồn theo lô của các sản phẩm tại một vị trí (khóa UPDLOCK, ROWLOCK), kèm thông tin lô để chia FEFO.
+    Task<IReadOnlyDictionary<int, IReadOnlyList<LotStock>>> GetLotStocksAsync(
+        IReadOnlyCollection<int> productIds, int locationId, CancellationToken cancellationToken = default);
+
+    // Lô tạm của sản phẩm (mỗi sản phẩm tối đa một, UX_lots_provisional); null nếu chưa có.
+    Task<int?> GetProvisionalLotIdAsync(int productId, CancellationToken cancellationToken = default);
+
+    // Đánh dấu sản phẩm "cần kiểm kê" (BR-01, BR-14). Chạy ngay trong transaction hiện tại.
+    Task MarkNeedsCountAsync(IReadOnlyCollection<int> productIds, CancellationToken cancellationToken = default);
+
+    // Các dòng sổ kho của một hóa đơn (kèm lô), theo id tăng dần.
+    Task<IReadOnlyList<StockMove>> GetSaleMovesAsync(Guid saleId, CancellationToken cancellationToken = default);
 
     // Các lô trong danh sách đã có biến động khác loại exceptDocType (bị bán, chuyển, hủy, kiểm kê...).
     Task<IReadOnlyList<int>> GetLotsMovedByOtherDocsAsync(

@@ -22,6 +22,8 @@ public sealed class ProductService(IUnitOfWork unitOfWork)
     {
         if (!string.IsNullOrWhiteSpace(request.Status) && !ProductStatus.All.Contains(request.Status))
             return HTTPResponse.Fail<PagedResult<ProductListItemResponse>>(400, CatalogResponseMessageDTO.InvalidProductStatus);
+        if (!string.IsNullOrWhiteSpace(request.StockFilter) && !ProductStockFilter.All.Contains(request.StockFilter))
+            return HTTPResponse.Fail<PagedResult<ProductListItemResponse>>(400, CatalogResponseMessageDTO.InvalidStockFilter);
 
         var result = await unitOfWork.ProductRepository.SearchAsync(request, cancellationToken);
         return HTTPResponse.Success(result, CatalogResponseMessageDTO.SearchProductsSuccess);
@@ -39,7 +41,8 @@ public sealed class ProductService(IUnitOfWork unitOfWork)
     // Tra mã vạch: trả sản phẩm và đúng đơn vị mang mã đó (quét ở bán hàng, nhập hàng, kiểm kê).
     public async Task<HTTPResponseData<ProductBarcodeResponse?>> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken)
     {
-        var result = await unitOfWork.ProductRepository.FindByBarcodeAsync(barcode.Trim(), cancellationToken);
+        var normalized = BarcodeRules.Normalize(barcode);
+        var result = normalized is null ? null : await unitOfWork.ProductRepository.FindByBarcodeAsync(normalized, cancellationToken);
         return result is null
             ? HTTPResponse.Fail<ProductBarcodeResponse>(404, CatalogResponseMessageDTO.BarcodeNotFound)
             : HTTPResponse.Success(result, CatalogResponseMessageDTO.GetProductSuccess);
@@ -299,8 +302,8 @@ public sealed class ProductService(IUnitOfWork unitOfWork)
         return HTTPResponse.Fail<ProductResponse>(409, string.Format(Vietnamese, PriceWarningFormat, detail));
     }
 
-    private static string? NormalizeBarcode(string? barcode) =>
-        string.IsNullOrWhiteSpace(barcode) ? null : barcode.Trim();
+    // UPC-A 12 số → EAN-13 (ADR-0003 mục 4), để mã khai báo và mã quét so cùng một dạng.
+    private static string? NormalizeBarcode(string? barcode) => BarcodeRules.Normalize(barcode);
 
     private static string Money(long amount) => amount.ToString("N0", Vietnamese) + "đ";
 

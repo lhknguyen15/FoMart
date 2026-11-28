@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Token giao diện FoMart (mô tả và quy tắc dùng: DESIGN.md ở gốc repo).
+   Component chỉ dùng class sinh từ các token này (bg-brand-600, text-ink-muted...). */
+@theme {
+  /* Be Vietnam Pro tự lưu (@fontsource, import ở main.tsx): 400 / 600 / 700. */
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Xanh lá đậm của quầy tạp hóa: nút chính, thanh đầu trang. */
+  --color-brand-50: #eaf5f1;
+  --color-brand-100: #cfe8de;
+  --color-brand-500: #1f8a6d;
+  --color-brand-600: #0f6b54;
+  --color-brand-700: #0b5342;
+
+  /* Mặt giấy và chữ: nền hơi ngả xanh, chữ gần đen. */
+  --color-paper: #f6f8f7;
+  --color-surface: #ffffff;
+  --color-line: #dde4e1;
+  --color-ink: #17211e;
+  --color-ink-muted: #5b6763;
+
+  /* Vàng và kem của mái hiên (logo). Vàng: tối đa một điểm nhấn mỗi màn hình, không làm màu chữ. */
+  --color-accent: #f2b33d;
+  --color-cream: #fdf3dc;
+
+  /* Trạng thái: đủ hàng / cảnh báo (sắp hết hạn, tồn âm) / lỗi. Cả ba ≥ 5:1 trên nền trắng, dùng được làm chữ. */
+  --color-ok: #1b7a44;
+  --color-warn: #8f5b10;
+  --color-bad: #c0392b;
+
+  /* Viền chớp quanh camera khi đọc được mã. */
+  --animate-scan-flash: scan-flash 600ms ease-out forwards;
+  @keyframes scan-flash {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scan-flash {
+    animation-duration: 1ms;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+
+  /* Chi tiết trình duyệt cũng theo bảng màu: vùng bôi chọn và con trỏ nhập. */
+  ::selection {
+    @apply bg-brand-100 text-ink;
+  }
+
+  input,
+  textarea {
+    caret-color: var(--color-brand-600);
+  }
+}
