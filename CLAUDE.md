@@ -8,7 +8,7 @@ Dự án cá nhân để đưa vào CV. Web app (PWA) giúp tiệm tạp hóa nh
 - `docs/module-workflows.md` – Sơ đồ luồng (Mermaid) cho 6 module: danh mục, nhập hàng, bán hàng, chuyển kho, xuất hủy, kiểm kê.
 - `docs/dev-workflow.md` – Quy trình phát triển, vòng lặp mỗi tính năng, việc cần làm ở giai đoạn 1.
 - `docs/database.md` – Thiết kế database đang áp dụng: sơ đồ ERD, `doc_type`, quy tắc nào ép ở DB/ứng dụng, cách trừ kho, lệnh scaffold.
-- `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database, 0003 quét mã vạch bằng camera.
+- `docs/adr/` – Quyết định kỹ thuật: 0001 kiến trúc backend, 0002 thiết kế database, 0003 quét mã vạch bằng camera, 0004 tự xác nhận chuyển khoản qua SePay.
 - `database/` – Script SQL là nguồn sự thật của schema (`migrate.ps1`, `migrations/Vxxx__*.sql`, `seed/`).
 - `docs/module-notes/` – Ghi chú từng mảng đã làm: file/thư mục đã tạo, API, quyết định, lỗi đã gặp, hạn chế, cách test. Đọc trước khi sửa một mảng có sẵn.
 
@@ -295,7 +295,7 @@ Không tính: file sinh tự động (`bin/`, `obj/`), file scaffold trong `Doma
 1. Không cố định thiết bị: điện thoại có camera là tối thiểu; hỗ trợ thêm máy quét USB/Bluetooth dạng bàn phím. Mọi nguồn quét quy về một sự kiện "đã nhận mã X".
 2. Tồn kho tính theo **đơn vị cơ sở** (lon). Đơn vị khác (lốc, thùng) có hệ số quy đổi nguyên dương và giá bán riêng.
 3. Ghi nhận bán theo "phương án C": bán nhanh có ghi nhận + xuất hủy cho hư hỏng đã biết + kiểm kê định kỳ bù sai lệch chưa biết.
-4. Thanh toán tiền mặt hoặc chuyển khoản VietQR, nhân viên tự xác nhận (không tích hợp ngân hàng).
+4. Thanh toán tiền mặt hoặc chuyển khoản VietQR. Mặc định nhân viên tự xác nhận; tùy chọn tự xác nhận qua webhook SePay ở giai đoạn 5 (ADR-0004). Không tích hợp trực tiếp API ngân hàng hay cổng thu hộ.
 5. Một hệ thống phục vụ cả tiệm truyền thống (1 người, 1 vị trí) lẫn minimart (nhiều nhân viên, kho sau + kệ) bằng cấu hình.
 
 ## Quy tắc lõi KHÔNG được vi phạm
