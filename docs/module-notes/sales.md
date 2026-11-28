@@ -94,3 +94,60 @@ Nhánh `feature/sales-checkout`. Đã chốt với người dùng: BR-18 (kệ t
 
   Đối soát sổ kho rỗng ở cuối. Tất cả qua.
   - Swagger: login → `POST /api/sales` `{ "id": "<uuid v7>", "lines": [{ "unitId": 1, "qty": 2 }] }`. Id v7 tạo bằng `Guid.CreateVersion7()` hoặc trang uuidgenerator; bản `uuid` v7 của frontend sẽ tự sinh.
+
+### 28/11/2026 – Màn hình bán hàng (frontend)
+
+Nhánh `feature/sales-pos-screen`. UC-05, UC-06 (bỏ hóa đơn chờ), SC-03 · BR-01, BR-05, BR-07 · NFR-02, NFR-03, NFR-04, NFR-05, NFR-07 · ADR-0003.
+
+**Thư mục mới:** `frontend/src/features/sales/{hooks,schemas}/`, `frontend/src/features/catalog/hooks/`
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `frontend/src/stores/useCartStore.ts` | Giỏ hàng (Zustand + `persist`): `saleId` UUID v7 sinh một lần mỗi giỏ, thêm hàng đã khai báo / chưa khai báo, đổi số lượng, `reset` |
+| `frontend/src/api/sales.ts` | Kiểu DTO hóa đơn + `createSale`, `confirmSalePayment`, `cancelSale`, `searchSales` |
+| `frontend/src/features/sales/hooks/useSales.ts` | `saleKeys`, `usePendingSales` (làm mới mỗi 30 s), `useCreateSale` / `useConfirmSalePayment` / `useCancelSale` (xong thì làm mới `sales`, `products`, `stock`) |
+| `frontend/src/features/catalog/hooks/useProducts.ts` | `productKeys`, `useProductSearch` (từ 2 ký tự, `keepPreviousData`), `useBarcodeLookup` và `useProductLoader` (gọi `fetchQuery` trong handler, có cache) |
+| `features/sales/components/BarcodeScanner.tsx` | Camera quét liên tục bằng zxing-cpp; tải lười (`React.lazy`); zoom, đèn, lấy nét liên tục, viền chớp; cùng mã trong 1,5 s chỉ tính một lần |
+| `features/sales/components/KeyboardScanner.tsx` | Máy quét cầm tay: ký tự cách nhau < 50 ms rồi Enter; bỏ qua khi đang gõ trong ô nhập |
+| `features/sales/components/ProductSearch.tsx` | Tìm theo tên không dấu; chạm để thêm; nhiều đơn vị thì chọn đơn vị; gõ mã số rồi Enter thì xử lý như quét |
+| `features/sales/components/CartList.tsx` | Giỏ: +/− (− ở 1 là bỏ món), thành tiền; trạng thái rỗng |
+| `features/sales/components/CheckoutBar.tsx` | Tổng tiền 2.5rem; gợi ý tiền khách đưa và tiền thối; "Xong · Tiền mặt" một chạm; "Chuyển khoản" |
+| `features/sales/components/PendingSales.tsx` | Hóa đơn chờ chuyển khoản: "Đã nhận tiền" (hỏi lại khi chỉ còn lô hết hạn), "Bỏ" |
+| `features/sales/components/UndeclaredItemForm.tsx`, `schemas/undeclaredItemSchema.ts` | Hàng chưa khai báo: tên + giá nhập tay (React Hook Form + Zod) |
+| `frontend/src/lib/id.ts`, `lib/barcode.ts`, `lib/feedback.ts` | UUID v7; chuẩn hóa UPC-A → EAN-13; bíp + rung (mở khóa âm thanh trong lần chạm) |
+| `backend/FoMart.Domain/Rules/BarcodeRules.cs` | Chuẩn hóa mã ở backend (xem `catalog.md`) |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `frontend/src/features/sales/pages/SalePage.tsx` | Màn hình bán hàng: bốn nguồn mã chung một `handleCode`; thẻ kết quả quét; thanh thanh toán dính đáy trên điện thoại, cột phải trên máy tính; xác nhận lô hết hạn; nhớ lựa chọn bật camera |
+| `frontend/src/api/catalog.ts` | Thêm `searchProducts`, `getProduct`, kiểu `ProductResponse`, `ProductListItemResponse` |
+| `frontend/src/app/router.tsx` | Bỏ route `/thu-quet` |
+| `frontend/src/app/AppLayout.tsx` | Khung rộng tới `max-w-5xl` (máy tính chia hai cột) |
+| `frontend/package.json` | `uuid` 14.0.3 |
+
+**File xóa:** `ScanTestPage.tsx`, `ScanTestCamera.tsx`, `lib/timing.ts`. Đây là trang thử quét, bị thay bằng `BarcodeScanner` (đúng phần "Hệ quả" của ADR-0003).
+
+**Ghi chú**
+- **Quyết định:**
+  - **Tiền mặt một chạm:** bấm "Xong" là lưu (UC-05: ≤ 3 lần chạm). Chọn tiền khách đưa chỉ để xem tiền thối.
+  - **Chuyển khoản:** giỏ thành hóa đơn chờ, giỏ trống để bán tiếp khách khác; xác nhận sau ở "Chờ chuyển khoản".
+  - **Lỗi mạng:** giữ giỏ và `saleId`, nên bấm lại an toàn.
+- **Bundle:** chunk chính 172 KB gzip. `BarcodeScanner` (2,5 KB), `barcodeDetector` (15 KB) và `.wasm` (414 KB) tải riêng khi bật camera hoặc chụp ảnh.
+- **Lỗi phát hiện:**
+  1. Một lệnh PowerShell (`Get-Content -Raw` rồi `Set-Content`) đọc `AppLayout.tsx` bằng ANSI làm hỏng chữ tiếng Việt; lint phát hiện, đã viết lại file. Bài học: chỉ sửa file bằng Edit/Write.
+  2. Script test truyền tiếng Việt qua `curl -d` bị sai mã hóa (400). Lỗi của script; gửi body từ file UTF-8 thì 200.
+- **Impeccable (chấm trên code):** sửa "phải bấm bật camera mỗi lần" thành nhớ lựa chọn trên máy (UC-05 bước 1).
+- **Hạn chế, làm tiếp:**
+  - Chưa vẽ mã VietQR: cần API trả thông tin ngân hàng cho người đã đăng nhập (`GET /api/stores` công khai chỉ trả `hasBankAccount`) + thư viện tạo QR.
+  - Chưa có tự khóa (NFR-09), hàng đợi ngoại tuyến (NFR-05, giai đoạn 6), nút bấm nhanh hàng không mã (`quick_button_order`).
+  - Chưa xem giao diện thật bằng mắt.
+- **Test:** build + lint sạch. Chạy các request y như frontend gửi qua proxy Vite trên database tạm `FoMart_PosTest`:
+  - mã UPC-A 12 số và 13 số cùng ra một đơn vị; mã trùng ở dạng khác bị chặn 409;
+  - tìm "mi tom" không dấu; chi tiết sản phẩm có 3 đơn vị;
+  - bán tiền mặt có hàng chưa khai báo: tổng 26.000đ, thối 24.000đ, có cảnh báo;
+  - gửi lại cùng id được 200, không ghi trùng;
+  - chuyển khoản chờ → có trong danh sách chờ → "Đã nhận"; "Bỏ" chuyển sang cancelled.

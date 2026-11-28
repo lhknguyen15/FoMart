@@ -13,7 +13,7 @@ export function AppLayout() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-10 bg-brand-600 pt-[env(safe-area-inset-top)] text-white shadow-sm">
-        <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
+        <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
           <img src="/logo-mark.svg" alt="" className="size-8 shrink-0" />
           <span className="min-w-0 flex-1 truncate text-lg font-semibold">{store.data?.name ?? 'FoMart'}</span>
           {user && (
@@ -32,7 +32,7 @@ export function AppLayout() {
           </button>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
     </div>
