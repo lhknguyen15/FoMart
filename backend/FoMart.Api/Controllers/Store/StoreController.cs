@@ -20,4 +20,15 @@ public sealed class StoreController(StoreService storeService) : ControllerBase
         var response = await storeService.GetStoreAsync(cancellationToken);
         return StatusCode(response.StatusCode, response);
     }
+
+    // Tài khoản nhận chuyển khoản để vẽ mã VietQR ở màn hình bán hàng (cần đăng nhập, cả nhân viên).
+    [HttpGet("payment")]
+    [ProducesResponseType(typeof(HTTPResponseData<StorePaymentResponse?>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HTTPResponseData<StorePaymentResponse?>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(HTTPResponseData<StorePaymentResponse?>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HTTPResponseData<StorePaymentResponse?>>> GetPayment(CancellationToken cancellationToken)
+    {
+        var response = await storeService.GetPaymentAsync(cancellationToken);
+        return StatusCode(response.StatusCode, response);
+    }
 }

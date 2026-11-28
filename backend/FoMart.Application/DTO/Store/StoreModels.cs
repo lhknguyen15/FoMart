@@ -6,3 +6,10 @@ public sealed record StoreResponse(
     string? Address,
     string? Phone,
     bool HasBankAccount);
+
+// GET /api/stores/payment: tài khoản nhận chuyển khoản để vẽ mã VietQR (UC-05). Cần đăng nhập:
+// endpoint công khai GET /api/stores không trả số tài khoản.
+public sealed record StorePaymentResponse(
+    string BankBin,
+    string AccountNo,
+    string AccountName);

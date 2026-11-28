@@ -151,3 +151,47 @@ Nhánh `feature/sales-pos-screen`. UC-05, UC-06 (bỏ hóa đơn chờ), SC-03 �
   - bán tiền mặt có hàng chưa khai báo: tổng 26.000đ, thối 24.000đ, có cảnh báo;
   - gửi lại cùng id được 200, không ghi trùng;
   - chuyển khoản chờ → có trong danh sách chờ → "Đã nhận"; "Bỏ" chuyển sang cancelled.
+
+### 28/11/2026 – Mã VietQR cho hóa đơn chuyển khoản
+
+Nhánh `feature/sales-pos-screen` (cùng PR với màn hình bán hàng). UC-05 bước 5, quyết định số 4 (khách chuyển khoản, nhân viên tự xác nhận, không tích hợp ngân hàng), NFR-09.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `frontend/src/lib/vietqr.ts` | Dựng nội dung VietQR theo EMVCo/NAPAS 247: trường 38 (`A000000727` + BIN + số tài khoản + `QRIBFTTA`), 53 = 704, 54 = số tiền, 62/08 = nội dung (mã hóa đơn, bỏ dấu, ≤ 25 ký tự), 63 = CRC-16/CCITT-FALSE; bảng tên ngân hàng theo BIN |
+| `frontend/src/features/sales/components/VietQrPanel.tsx` | Mã QR (SVG vẽ từ ma trận của `qrcode`), số tiền, ngân hàng, số tài khoản, chủ tài khoản, nội dung; báo khi tiệm chưa nhập tài khoản |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `backend/FoMart.Application/DTO/Store/StoreModels.cs` | Thêm `StorePaymentResponse(BankBin, AccountNo, AccountName)` |
+| `backend/FoMart.Application/DTO/Store/StoreResponseMessageDTO.cs` | Thêm `GetPaymentSuccess`, `PaymentNotConfigured` |
+| `backend/FoMart.Application/Services/Store/StoreService.cs` | `GetPaymentAsync`: 404 khi thiếu BIN / số tài khoản / tên chủ tài khoản |
+| `backend/FoMart.Api/Controllers/Store/StoreController.cs` | `GET /api/stores/payment`, cần đăng nhập (cả nhân viên) |
+| `frontend/src/api/store.ts` | `getStorePayment`, kiểu `StorePaymentResponse` |
+| `frontend/src/features/store/hooks/useStore.ts` | `storeKeys.payment()`, `useStorePayment` (tươi 5 phút) |
+| `frontend/src/features/sales/components/PendingSales.tsx` | Nút "Mã QR" mở/đóng từng hóa đơn; hóa đơn vừa tạo ở máy này mở sẵn; `VietQrPanel` tải lười |
+| `frontend/src/features/sales/pages/SalePage.tsx` | Truyền `focusId` khi hóa đơn vừa tạo là chờ chuyển khoản; nhắc "Khách quét mã QR bên dưới" |
+| `frontend/package.json` | `qrcode` 1.5.4, `@types/qrcode` 1.5.6 (dev) |
+| `CLAUDE.md` | Thêm `vietqr.ts` vào danh sách `lib/`; cập nhật trạng thái |
+
+**Ghi chú**
+- **Quyết định:**
+  - Số tài khoản không nằm trong `GET /api/stores`, vì endpoint đó công khai cho màn hình đăng nhập. Endpoint riêng `/api/stores/payment` thì bắt buộc đăng nhập.
+  - Tự dựng nội dung VietQR ngay trên máy thay vì gọi ảnh từ dịch vụ ngoài (img.vietqr.io). Lý do: chạy được khi ngoại tuyến (giai đoạn 6) và không gửi số tiền, số tài khoản ra bên thứ ba.
+  - Nội dung chuyển khoản là mã hóa đơn, để người bán đối chiếu khi tiền về.
+  - Vẽ QR bằng `QRCode.create` (chạy đồng bộ) + `useMemo` rồi render SVG: không cần effect, không cần state ảnh, và mã nét ở mọi cỡ.
+- **Bundle:** `VietQrPanel` + `qrcode` tách riêng thành chunk 10 KB gzip, chỉ tải khi có hóa đơn chờ chuyển khoản. Chunk chính giữ 172 KB gzip.
+- **Lỗi phát hiện:** khi gọi `sqlcmd` qua `docker exec` trong Git Bash, đường dẫn `/opt/...` bị đổi thành `C:/Program Files/Git/opt/...`. Cách sửa: đặt `MSYS_NO_PATHCONV=1`.
+- **Hạn chế:**
+  - Chưa có màn hình để chủ tiệm nhập tài khoản ngân hàng; hiện chỉ nhập trong DB / seed (để làm cùng cài đặt cửa hàng).
+  - Bảng tên ngân hàng mới có 13 ngân hàng phổ biến; BIN khác thì hiện "Ngân hàng (BIN …)".
+  - Chưa thử quét QR bằng app ngân hàng thật.
+- **Test:**
+  - CRC-16 cho chuỗi `123456789` ra `29B1`, đúng giá trị kiểm tra chuẩn.
+  - Payload mẫu (970436, 26.000đ, HD00000012) tự kiểm CRC đúng. Giải ngược mã QR bằng zxing-wasm ra đúng payload.
+  - API: không token → 401; có token → 200 (dữ liệu seed). Xóa tạm `bank_bin` → 404 kèm thông báo, rồi khôi phục.
+  - `npm run build` + `npm run lint` sạch; backend build 0 cảnh báo.

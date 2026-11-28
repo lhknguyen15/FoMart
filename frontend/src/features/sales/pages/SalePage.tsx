@@ -250,6 +250,7 @@ export function SalePage() {
               {outcome.status === 'paid' ? 'Đã bán' : 'Chờ chuyển khoản'} <span className="tabular-nums">{outcome.code}</span> ·{' '}
               <span className="tabular-nums">{formatMoney(outcome.total)}</span>
             </p>
+            {outcome.status === 'pending_payment' && <p className="text-sm">Khách quét mã QR bên dưới. Thấy tiền về thì bấm “Đã nhận tiền”.</p>}
             {outcome.change !== null && outcome.change > 0 && (
               <p className="text-lg font-bold tabular-nums">Thối {formatMoney(outcome.change)}</p>
             )}
@@ -262,7 +263,7 @@ export function SalePage() {
         )}
 
         <CartList lines={lines} onQty={setQty} disabled={createSale.isPending} />
-        <PendingSales />
+        <PendingSales focusId={outcome?.status === 'pending_payment' ? outcome.id : undefined} />
 
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface px-[max(1rem,env(safe-area-inset-left))] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:rounded-xl lg:border lg:p-4">
           <div className="mx-auto flex max-w-3xl flex-col gap-2 lg:max-w-none">
