@@ -40,7 +40,7 @@ public sealed record SaleListItemResponse(
     DateTime CreatedAt,
     DateTime? PaidAt);
 
-// Chi tiết hóa đơn. CostTotal, GrossProfit = null khi người xem là nhân viên (BR-08) hoặc có phần giá vốn chưa biết (lô tạm, hàng chưa khai báo).
+// Chi tiết hóa đơn. CostTotal, GrossProfit làm tròn về đồng (MoneyRules, BR-11); null khi người xem là nhân viên (BR-08) hoặc có phần giá vốn chưa biết (lô tạm, hàng chưa khai báo).
 // Warnings chỉ có ở phản hồi lúc bán / xác nhận: tồn không đủ, dùng lô tạm, bán lô hết hạn.
 public sealed record SaleResponse(
     Guid Id,
@@ -61,8 +61,8 @@ public sealed record SaleResponse(
     DateTime? CancelledAt,
     string? CancelReason,
     bool CostHidden,
-    decimal? CostTotal,
-    decimal? GrossProfit,
+    long? CostTotal,
+    long? GrossProfit,
     IReadOnlyList<SaleLineResponse> Lines,
     IReadOnlyList<string> Warnings);
 
@@ -77,7 +77,7 @@ public sealed record SaleLineResponse(
     long UnitPrice,
     long LineTotal,
     int? BaseQty,
-    decimal? CostTotal,
+    long? CostTotal,
     bool ExpiredConfirmed,
     bool IsUndeclared,
     IReadOnlyList<SaleLotResponse> Lots);

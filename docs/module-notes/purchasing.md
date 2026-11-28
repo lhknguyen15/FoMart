@@ -154,3 +154,48 @@ Nhánh `feature/purchasing-receipt-screen`. UC-04, UC-01 (nhánh tạo nhanh), B
   - Nhân viên: phiếu ẩn giá, gửi giá 403, xem giá lần trước 403, hoàn tất khi thiếu giá 409; chủ tiệm điền giá → nhân viên hoàn tất được.
   - Nhân viên hủy phiếu 403, chủ tiệm hủy được; xóa nháp → chi tiết 404; đối soát sổ kho rỗng.
   - Kiểm schema giá: "190.000", "190 000" hợp lệ; "19a" lỗi; thiếu hạn dùng khi có quản lý thì lỗi.
+
+### 28/11/2026 – Chọn vị trí nhận, mã chứng từ liên tục, giá vốn / lãi làm tròn
+
+Nhánh `fix/receipt-location-and-codes`. UC-04 bước 1, UC-06 (hiển thị hóa đơn), BR-06, BR-11. Ba lỗi phát hiện khi chạy thử toàn bộ workflow trên Swagger + giao diện.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `database/migrations/V004__sequence_no_cache.sql` | `ALTER SEQUENCE … NO CACHE` cho 6 sequence sinh mã chứng từ |
+| `backend/FoMart.Domain/Rules/MoneyRules.cs` | `ToDong` (làm tròn về đồng, nửa đồng ra xa 0), `GrossProfit` (doanh thu − giá vốn đã làm tròn) |
+| `frontend/src/features/catalog/hooks/useLocations.ts` | `locationKeys`, `useLocations` (tươi 5 phút) |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `backend/FoMart.Application/DTO/Sales/SaleModels.cs` | `SaleResponse.CostTotal`, `GrossProfit`, `SaleLineResponse.CostTotal`: `decimal?` → `long?` (đồng). `SaleLotResponse.UnitCost` giữ 4 chữ số |
+| `backend/FoMart.Application/Services/Sales/SaleService.cs` | Cộng giá vốn chính xác rồi làm tròn một lần qua `MoneyRules` |
+| `database/migrate.ps1` | `Get-ScriptChecksum`: băm sau khi đổi CRLF về LF |
+| `.gitattributes` | `*.sql text eol=lf` |
+| `frontend/src/api/catalog.ts` | `LocationResponse`, `getLocations` |
+| `features/purchasing/components/DraftReceipt.tsx` | Ô "Nhận vào" cạnh "Nhà cung cấp" (chỉ hiện khi tiệm có ≥ 2 vị trí; kệ bán ghi "· bán được ngay"); `saveHeader` gửi đủ nhà cung cấp + vị trí + ghi chú |
+| `features/sales/pages/SaleDetailPage.tsx` | Lô hiện bằng số lô + HSD ("lô FX01 HSD 30/06/2027"), không hiện id nội bộ |
+| `docs/database.md`, `CLAUDE.md` | Quy ước sequence `NO CACHE`, không hiện id `IDENTITY`, làm tròn tiền, `.sql` luôn LF; trạng thái |
+
+**Ghi chú**
+
+- **Quyết định:**
+  - **Vị trí nhận:** giữ mặc định của UC-04 (kho sau nếu có, không thì kệ bán); người nhập đổi sang kệ khi hàng lên kệ ngay. Hàng đã nằm ở kho sau muốn bán có giá vốn vẫn cần chuyển kho (UC-07) / tự chuyển khi bán (BR-18), giai đoạn 5.
+  - **Không tắt `IDENTITY_CACHE`:** lệnh `ALTER DATABASE SCOPED CONFIGURATION` không chạy được trong transaction của migrate, và id không cần liên tục. Thay vào đó giao diện không hiện id lô.
+  - **Làm tròn một lần ở tổng:** cộng giá vốn 4 chữ số rồi mới làm tròn, để không cộng dồn sai số; giá vốn + lãi luôn bằng doanh thu. Giá vốn từng dòng cũng làm tròn để hiển thị, nên tổng các dòng có thể lệch tổng hóa đơn tối đa vài đồng.
+- **Lỗi phát hiện khi làm:**
+  1. `migrate.ps1` trên DB dev báo "V003 đã áp dụng nhưng nội dung đã bị sửa" dù file không đổi: Git checkout V003 với CRLF (`core.autocrlf=true`, `* text=auto`), còn checksum đã lưu là của bản LF và script băm từng byte. Sửa: băm sau khi chuẩn hóa LF (checksum cũ vẫn khớp, không phải sửa DB) + `*.sql text eol=lf`.
+  2. `dotnet build` lỗi chép DLL vì API đang chạy giữ file: tắt API rồi build.
+- **Hạn chế:** mã vẫn hụt khi xóa phiếu nháp (mã cấp lúc tạo nháp) hoặc khi transaction rollback; chưa có màn hình chuyển kho.
+- **Test:** backend build 0 cảnh báo; `npm run build` + `npm run lint` sạch.
+  - Database tạm `FoMart_FixTest` (đã xóa): 6 sequence `is_cached = 0`.
+  - 15/15 kịch bản HTTP qua proxy Vite:
+    - phiếu mới mặc định Kho sau → đổi sang Kệ bán; đổi nhà cung cấp giữ vị trí;
+    - hoàn tất vào kệ; bán 1 lốc → giá vốn 47.500, lãi 10.500 (trước đây 47500.0002 / 10499.9998), giá vốn + lãi = doanh thu;
+    - lô trên hóa đơn là lô FX01 (không phải lô tạm), giá vốn đơn vị vẫn 7916.6667; nhân viên không thấy giá vốn;
+    - **khởi động lại container SQL Server** → PN00000002 → PN00000003, HD00000001 → HD00000002; đối soát sổ kho rỗng.
+  - Ảnh chụp ô "Nhận vào" ở 412px và 1280px, dòng lô trên chi tiết hóa đơn.
+  - Đã áp V004 lên DB dev bằng `migrate.ps1` (sau khi sửa checksum).

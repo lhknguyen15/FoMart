@@ -359,13 +359,14 @@ public sealed class SaleService(IUnitOfWork unitOfWork)
 
         var lines = sale.SaleLines.OrderBy(l => l.LineNo).Select(l => new SaleLineResponse(
             l.Id, l.LineNo, l.ProductId, l.UnitId, l.NameSnapshot, l.Qty, l.UnitPrice, l.LineTotal, l.BaseQty,
-            canSeeCost ? l.CostTotal : null,
+            canSeeCost && l.CostTotal is { } lineCost ? MoneyRules.ToDong(lineCost) : null,
             l.ExpiredConfirmed,
             l.ProductId is null,
             lotsByLine.GetValueOrDefault(l.Id) ?? [])).ToList();
 
-        // Lãi gộp chỉ tính khi đã trừ kho và biết giá vốn mọi dòng (BR-06).
-        decimal? costTotal = canSeeCost && sale.PaidAt is not null && sale.SaleLines.All(l => l.CostTotal is not null)
+        // Lãi gộp chỉ tính khi đã trừ kho và biết giá vốn mọi dòng (BR-06). Cộng giá vốn chính xác (4 chữ số)
+        // rồi mới làm tròn một lần về đồng, để không cộng dồn sai số làm tròn của từng dòng (BR-11).
+        decimal? exactCost = canSeeCost && sale.PaidAt is not null && sale.SaleLines.All(l => l.CostTotal is not null)
             ? sale.SaleLines.Sum(l => l.CostTotal!.Value)
             : null;
 
@@ -388,8 +389,8 @@ public sealed class SaleService(IUnitOfWork unitOfWork)
             sale.CancelledAt,
             sale.CancelReason,
             !canSeeCost,
-            costTotal,
-            costTotal is { } cost ? sale.Total - cost : null,
+            exactCost is { } cost ? MoneyRules.ToDong(cost) : null,
+            exactCost is { } costForProfit ? MoneyRules.GrossProfit(sale.Total, costForProfit) : null,
             lines,
             warnings);
         return HTTPResponse.Success(response, message, statusCode);

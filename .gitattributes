@@ -6,6 +6,9 @@
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
+# Script SQL giữ LF ở mọi máy: migrate.ps1 lưu checksum từng migration (đã chuẩn hóa về LF).
+*.sql text eol=lf
+
 # Script shell và file chạy trong container giữ LF.
 *.sh  text eol=lf
 docker-compose.yml text eol=lf

@@ -242,3 +242,7 @@ Nhánh `feature/sales-invoice-list`. UC-05, UC-06, BR-03, BR-04, BR-07, BR-08. B
   - Đã kiểm: lọc hôm nay / hôm qua / chờ CK / tiền mặt / đã hủy; hai trang không trùng nhau, mới nhất trước; tìm theo mã (cả chữ thường); chi tiết có lô đã trừ; nhân viên không thấy giá vốn; id không có → 404.
   - Hủy: nhân viên hủy hóa đơn đã thanh toán 403; chủ tiệm hủy → tồn cộng lại đúng 2 lon; hủy lần 2 → 409; lý do trống → 400.
   - Xác nhận chuyển khoản từ trang chi tiết; đối soát sổ kho rỗng.
+
+### 28/11/2026 – Giá vốn / lãi làm tròn về đồng, lô hiện bằng số lô + HSD
+
+Nhánh `fix/receipt-location-and-codes`, chi tiết ở `purchasing.md` cùng ngày. `SaleResponse.CostTotal`, `GrossProfit`, `SaleLineResponse.CostTotal` đổi sang `long?` (đồng, `Domain/Rules/MoneyRules.cs`, BR-11); chi tiết hóa đơn hiện "lô FX01 HSD 30/06/2027" thay cho id lô nội bộ.

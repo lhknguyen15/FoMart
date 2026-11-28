@@ -83,13 +83,22 @@ Invoke-Sql -Query 'SELECT version + ''|'' + checksum FROM dbo.schema_versions' |
     Where-Object { $_ -match '\|' } |
     ForEach-Object { $v, $c = $_.Trim().Split('|'); $applied[$v] = $c }
 
+# Checksum SHA-256 của nội dung sau khi đổi CRLF về LF: Git trên Windows có thể checkout file với CRLF,
+# chỉ khác ký tự xuống dòng thì không coi là "đã sửa migration". Checksum đã lưu trước đây là của bản LF nên vẫn khớp.
+function Get-ScriptChecksum([string]$Path) {
+    $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) -replace "`r`n", "`n"
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return -join ($sha.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes($text)) | ForEach-Object { $_.ToString('x2') }) }
+    finally { $sha.Dispose() }
+}
+
 $scripts = @(Get-ChildItem (Join-Path $root 'migrations') -Filter 'V*__*.sql' | Sort-Object Name)
 if ($Seed) { $scripts += Get-ChildItem (Join-Path $root 'seed') -Filter '*.sql' | Sort-Object Name }
 
 foreach ($s in $scripts) {
     $isSeed = $s.DirectoryName -like '*seed'
     $version = if ($isSeed) { "seed:$($s.BaseName)" } else { ($s.Name -split "__")[0] }
-    $checksum = (Get-FileHash $s.FullName -Algorithm SHA256).Hash.ToLower()
+    $checksum = Get-ScriptChecksum $s.FullName
 
     if ($applied.ContainsKey($version)) {
         if ($applied[$version] -ne $checksum -and -not $isSeed) {
