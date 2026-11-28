@@ -124,3 +124,44 @@ Nhánh `feature/inventory-stock-screen`. SC-06/SC-07 (phần tồn), UC-10 (th�
   - Đã kiểm: lọc sắp hết / cần kiểm kê / bộ lọc sai 400; lô còn 3 ngày → `near_expiry`, hết hạn hôm qua → `expired`, lô xa hạn không cảnh báo; nhân viên không thấy giá vốn nhưng vẫn thấy cảnh báo; lô tạm −5 ở kệ; thẻ kho có `saleId` / `receiptId`, mới nhất trước, tồn sau đúng; hủy hóa đơn tạo dòng `sale_cancel`; đối soát sổ kho rỗng.
   - FEFO bỏ qua lô đã hết hạn: 2 chai bán ra trừ vào lô NEAR3, không trừ OLD1 (BR-04, BR-05).
   - Ảnh chụp danh sách, lọc "Sắp hết", chi tiết ở 412px, 1024px, 1912px.
+
+### 28/11/2026 – Màn hình Hạn dùng (UC-08, SC-12)
+
+Nhánh `feature/inventory-expiry-screen`. UC-08 (phần "Màn hình hạn dùng"), BR-04, BR-08, BR-11. Giai đoạn 3.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `features/inventory/pages/StockExpiryPage.tsx` | `/han-dung`: hai thẻ tổng hợp (đã hết hạn / sắp hết hạn: số lô, số lượng, giá trị theo giá vốn) bấm để lọc; lọc Tất cả cần xử lý / Đã hết hạn / Sắp hết hạn; bảng (sản phẩm, lô, HSD, "Quá hạn n ngày" / "Hết hạn hôm nay" / "Còn n ngày", vị trí, tồn, giá trị) hoặc thẻ trên điện thoại; bấm dòng mở chi tiết tồn của sản phẩm |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `backend/FoMart.Application/DTO/Inventory/StockModels.cs` | `StockSearchRequest.Expiry` + `StockExpiryFilter` (`warning`, `expired`, `near_expiry`); `StockExpirySummaryResponse` |
+| `backend/FoMart.Application/Interfaces/Repositories/IStockRepository.cs`, `Infrastructure/Repositories/StockRepository.cs` | `SearchStockAsync` nhận khoảng hạn dùng `[expiryFrom, expiryBefore)`: chỉ lô còn tồn > 0, hạn sớm nhất đứng đầu; `GetExpirySummaryAsync` cộng số lô, số lượng, giá trị (làm tròn một lần qua `MoneyRules`) |
+| `backend/FoMart.Application/Services/Inventory/StockService.cs` | Đổi bộ lọc thành khoảng ngày theo hôm nay (giờ VN) + `stores.expiry_warn_days`, cùng mốc với `ExpiryRules.Check`; 400 khi bộ lọc sai; `GetExpirySummaryAsync` ẩn giá trị với người bị ẩn giá vốn (BR-08) |
+| `backend/FoMart.Api/Controllers/Inventory/StockController.cs`, `InventoryResponseMessageDTO.cs` | `GET /api/stock/expiry-summary`; khai báo 400 cho `GET /api/stock`; thông báo mới |
+| `frontend/src/api/inventory.ts`, `features/inventory/hooks/useStock.ts` | `getExpiringLots`, `getExpirySummary`; `stockKeys.expiring`, `expirySummary`; `useExpiringLots` (`useInfiniteQuery`), `useExpirySummary` |
+| `features/inventory/pages/StockListPage.tsx` | Dòng nhắc "n lô đã hết hạn, m lô sắp hết hạn" dẫn sang `/han-dung` (cách vào trang trên điện thoại) |
+| `frontend/src/app/AppNav.tsx`, `router.tsx` | Mục "Hạn dùng" (icon CalendarX) chỉ ở menu bên (`sidebarOnly`); route tải lười |
+| `DESIGN.md`, `CLAUDE.md` | Quy tắc màn hình phụ chỉ ở menu bên; trạng thái |
+
+**Ghi chú**
+
+- **Quyết định:**
+  - Lọc hạn dùng ở server theo khoảng ngày, không tải hết lô rồi lọc ở máy; mốc "sắp hết hạn" = hôm nay ≤ HSD < hôm nay + N (N = `stores.expiry_warn_days`, mặc định 7), trùng quy tắc cảnh báo khi nhập hàng.
+  - Lô hết hạn đúng hôm nay thuộc nhóm "sắp hết hạn" (vẫn bán được hết ngày), hiện nhãn "Hết hạn hôm nay" màu lỗi.
+  - Chỉ tính lô còn tồn > 0; lô tạm không có hạn dùng nên không xuất hiện.
+  - Trên điện thoại không thêm tab thứ 5 (tràn hàng): vào từ dòng nhắc ở trang Tồn kho.
+  - Nút "Lập phiếu xuất hủy" làm cùng module xuất hủy (tiếp theo); hiện chỉ ghi "(sắp có)".
+- **Impeccable critique + audit** (code + ảnh chụp 412 / 1024 / 1912px): trạng thái bằng chữ + màu, thẻ tổng hợp có `aria-pressed`, cột phụ không vỡ ở 1024px. Audit 17/20 (Theming 3: chưa có chế độ tối; Responsive 3: thẻ tổng hợp ghi "đơn vị" chung vì gộp nhiều sản phẩm khác đơn vị cơ sở).
+- **Lỗi phát hiện khi làm:** thay chữ nhiều dòng bằng `node -e` trong `AppNav.tsx` không khớp (chỉ dòng import đổi) nên tsc báo import thừa; sửa bằng Edit. Bài học: thay đổi nhiều dòng dùng Edit.
+- **Hạn chế:** chưa lập phiếu xuất hủy từ danh sách; chưa đổi số ngày cảnh báo trên giao diện (cài đặt cửa hàng, giai đoạn 4).
+- **Test:** backend build 0 cảnh báo; `npm run build` + `npm run lint` sạch. Database tạm `FoMart_ExpiryTest` (đã xóa): 16/16 kịch bản HTTP qua proxy Vite:
+  - 5 lô: quá hạn 3 ngày, hôm nay, còn 2 / 6 / 7 ngày → "cần xử lý" = EXP3, TODAY, D2, D6 theo thứ tự hạn; không có D7 (đúng ranh giới N = 7); "đã hết hạn" = EXP3; "sắp hết" = TODAY, D2, D6.
+  - Bộ lọc sai → 400; không lọc vẫn trả mọi lô.
+  - Tổng hợp 1 lô / 10 chai / 40.000đ và 3 lô / 11 chai / 44.000đ; nhân viên thấy số lô nhưng không thấy giá trị.
+  - Bán 6 chai: FEFO bỏ lô quá hạn, trừ hết lô TODAY rồi 1 chai lô D2; danh sách và tổng hợp cập nhật; phân trang; đối soát sổ kho rỗng.
+  - Ảnh chụp trang Hạn dùng, lọc "Đã hết hạn", dòng nhắc trang Tồn kho ở 412 / 1024 / 1912px.

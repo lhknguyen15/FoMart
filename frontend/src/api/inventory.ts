@@ -53,3 +53,27 @@ export async function getStockMoves(productId: number, page: number, signal?: Ab
   const response = await request<PagedResult<StockMoveResponse>>(`/api/stock/moves?productId=${productId}&page=${page}&pageSize=30`, { signal })
   return response.dataResponse
 }
+
+export type StockExpiryFilter = 'warning' | 'expired' | 'near_expiry'
+
+// GET /api/stock?expiry=: lô còn tồn đã hết hạn / sắp hết hạn trên toàn tiệm, hạn sớm nhất đứng đầu (UC-08).
+export async function getExpiringLots(expiry: StockExpiryFilter, page: number, signal?: AbortSignal): Promise<PagedResult<StockLotResponse>> {
+  const response = await request<PagedResult<StockLotResponse>>(`/api/stock?expiry=${expiry}&page=${page}&pageSize=50`, { signal })
+  return response.dataResponse
+}
+
+// Tổng hợp hạn dùng. *Value = null khi người xem bị ẩn giá vốn (BR-08).
+export interface StockExpirySummaryResponse {
+  warnDays: number
+  expiredLots: number
+  expiredQty: number
+  expiredValue: number | null
+  nearLots: number
+  nearQty: number
+  nearValue: number | null
+}
+
+export async function getExpirySummary(signal?: AbortSignal): Promise<StockExpirySummaryResponse> {
+  const response = await request<StockExpirySummaryResponse>('/api/stock/expiry-summary', { signal })
+  return response.dataResponse
+}

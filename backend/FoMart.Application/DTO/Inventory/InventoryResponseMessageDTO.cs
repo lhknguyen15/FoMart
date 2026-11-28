@@ -9,4 +9,6 @@ public static class InventoryResponseMessageDTO
     public const string LedgerMismatch = "Phát hiện {0} dòng tồn lệch khỏi sổ kho.";
     public const string ProductNotFound = "Không tìm thấy sản phẩm.";
     public const string InvalidDateRange = "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.";
+    public const string InvalidExpiryFilter = "Bộ lọc hạn dùng không hợp lệ (warning, expired, near_expiry).";
+    public const string GetExpirySummarySuccess = "Lấy tổng hợp hạn dùng thành công.";
 }

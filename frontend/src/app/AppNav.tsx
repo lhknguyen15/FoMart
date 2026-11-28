@@ -1,4 +1,4 @@
-import { PackageIcon, ReceiptIcon, ShoppingCartIcon, WarehouseIcon, type Icon } from '@phosphor-icons/react'
+import { CalendarXIcon, PackageIcon, ReceiptIcon, ShoppingCartIcon, WarehouseIcon, type Icon } from '@phosphor-icons/react'
 import { NavLink } from 'react-router'
 import type { UserRole } from '../api/auth'
 import { useAuthStore } from '../stores/useAuthStore'
@@ -8,14 +8,16 @@ interface NavItem {
   label: string
   Icon: Icon
   ownerOnly?: boolean // Tổng quan, Báo cáo, Cài đặt (giai đoạn 4): nhân viên không thấy
+  sidebarOnly?: boolean // chỉ ở menu bên; trên điện thoại vào từ trang khác để hàng tab không tràn (DESIGN.md > Navigation)
 }
 
-// Các màn hình chính. Thêm Tồn kho, Sản phẩm, Báo cáo... ở đây khi có.
+// Các màn hình chính. Thêm Sản phẩm, Báo cáo... ở đây khi có.
 const items: NavItem[] = [
   { to: '/', label: 'Bán hàng', Icon: ShoppingCartIcon },
   { to: '/hoa-don', label: 'Hóa đơn', Icon: ReceiptIcon },
   { to: '/nhap-hang', label: 'Nhập hàng', Icon: PackageIcon },
   { to: '/ton-kho', label: 'Tồn kho', Icon: WarehouseIcon },
+  { to: '/han-dung', label: 'Hạn dùng', Icon: CalendarXIcon, sidebarOnly: true },
 ]
 
 const visibleFor = (role: UserRole | undefined) => items.filter((item) => !item.ownerOnly || role === 'owner')
@@ -29,7 +31,7 @@ export function AppNav({ variant }: { variant: 'tabs' | 'sidebar' }) {
   if (variant === 'tabs') {
     return (
       <nav aria-label="Màn hình chính" className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-2 scrollbar-none">
-        {visible.map(({ to, label, Icon }) => (
+        {visible.filter((item) => !item.sidebarOnly).map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}

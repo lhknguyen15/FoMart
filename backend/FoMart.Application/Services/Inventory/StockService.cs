@@ -21,11 +21,23 @@ public sealed class StockService(IUnitOfWork unitOfWork)
     public async Task<HTTPResponseData<PagedResult<StockLotResponse>?>> SearchAsync(
         StockSearchRequest request, string? role, CancellationToken cancellationToken)
     {
-        var result = await unitOfWork.StockRepository.SearchStockAsync(request, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(request.Expiry) && !StockExpiryFilter.All.Contains(request.Expiry))
+            return HTTPResponse.Fail<PagedResult<StockLotResponse>>(400, InventoryResponseMessageDTO.InvalidExpiryFilter);
+
         var store = await unitOfWork.StoreRepository.GetSettingsAsync(cancellationToken);
         var canSeeCost = role == UserRole.Owner || store?.StaffCanSeeCost == true;
         var warnDays = store?.ExpiryWarnDays ?? 7;
         var today = VietnamToday();
+        var nearBefore = today.AddDays(warnDays); // cùng mốc với ExpiryRules.Check: còn dưới warnDays ngày là sắp hết hạn
+        var (expiryFrom, expiryBefore) = request.Expiry switch
+        {
+            StockExpiryFilter.Expired => ((DateOnly?)null, (DateOnly?)today),
+            StockExpiryFilter.NearExpiry => (today, nearBefore),
+            StockExpiryFilter.Warning => (null, nearBefore),
+            _ => (null, null),
+        };
+
+        var result = await unitOfWork.StockRepository.SearchStockAsync(request, expiryFrom, expiryBefore, cancellationToken);
         result = result with
         {
             Items = [.. result.Items.Select(i => i with
@@ -35,6 +47,19 @@ public sealed class StockService(IUnitOfWork unitOfWork)
             })],
         };
         return HTTPResponse.Success(result, InventoryResponseMessageDTO.SearchStockSuccess);
+    }
+
+    // Tổng hợp lô cần xử lý hạn dùng (UC-08): đã hết hạn / sắp hết hạn, số lượng và giá trị (ẩn giá trị với người bị ẩn giá vốn, BR-08).
+    public async Task<HTTPResponseData<StockExpirySummaryResponse?>> GetExpirySummaryAsync(string? role, CancellationToken cancellationToken)
+    {
+        var store = await unitOfWork.StoreRepository.GetSettingsAsync(cancellationToken);
+        var canSeeCost = role == UserRole.Owner || store?.StaffCanSeeCost == true;
+        var warnDays = store?.ExpiryWarnDays ?? 7;
+        var today = VietnamToday();
+        var summary = await unitOfWork.StockRepository.GetExpirySummaryAsync(today, today.AddDays(warnDays), warnDays, cancellationToken);
+        if (!canSeeCost)
+            summary = summary with { ExpiredValue = null, NearValue = null };
+        return HTTPResponse.Success(summary, InventoryResponseMessageDTO.GetExpirySummarySuccess);
     }
 
     // Thẻ kho của một sản phẩm: mọi biến động kèm chứng từ và tồn sau biến động.
