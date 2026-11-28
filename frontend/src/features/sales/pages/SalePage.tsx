@@ -1,5 +1,6 @@
 import { CheckCircleIcon, WarningIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { Link } from 'react-router'
 import type { PaymentMethod, SaleResponse } from '../../../api/sales'
 import { ApiError } from '../../../api/types'
 import { ScanPanel } from '../../../components/ui/ScanPanel'
@@ -177,6 +178,9 @@ export function SalePage() {
             {outcome.change !== null && outcome.change > 0 && (
               <p className="text-lg font-bold tabular-nums">Thối {formatMoney(outcome.change)}</p>
             )}
+            <Link to={`/hoa-don/${outcome.id}`} className="flex min-h-11 items-center self-start text-sm font-semibold text-brand-700 underline underline-offset-4">
+              Xem hóa đơn
+            </Link>
             {outcome.warnings.map((warning) => (
               <p key={warning} className="text-sm font-semibold text-warn">
                 {warning}
