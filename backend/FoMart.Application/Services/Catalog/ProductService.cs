@@ -22,6 +22,8 @@ public sealed class ProductService(IUnitOfWork unitOfWork)
     {
         if (!string.IsNullOrWhiteSpace(request.Status) && !ProductStatus.All.Contains(request.Status))
             return HTTPResponse.Fail<PagedResult<ProductListItemResponse>>(400, CatalogResponseMessageDTO.InvalidProductStatus);
+        if (!string.IsNullOrWhiteSpace(request.StockFilter) && !ProductStockFilter.All.Contains(request.StockFilter))
+            return HTTPResponse.Fail<PagedResult<ProductListItemResponse>>(400, CatalogResponseMessageDTO.InvalidStockFilter);
 
         var result = await unitOfWork.ProductRepository.SearchAsync(request, cancellationToken);
         return HTTPResponse.Success(result, CatalogResponseMessageDTO.SearchProductsSuccess);

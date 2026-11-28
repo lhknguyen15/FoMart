@@ -18,4 +18,12 @@ public static class ExpiryRules
         if (expiry < today) return ExpiryWarningLevel.Expired;
         return expiry.DayNumber - today.DayNumber < warnDays ? ExpiryWarningLevel.NearExpiry : ExpiryWarningLevel.None;
     }
+
+    // Mã gửi cho giao diện: null | near_expiry | expired (dùng chung cho phiếu nhập và tồn kho).
+    public static string? ToCode(ExpiryWarningLevel level) => level switch
+    {
+        ExpiryWarningLevel.Expired => "expired",
+        ExpiryWarningLevel.NearExpiry => "near_expiry",
+        _ => null,
+    };
 }

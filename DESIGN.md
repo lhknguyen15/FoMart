@@ -209,7 +209,7 @@ Bo góc vừa và nhất quán: ô nhập 8px, nút và thẻ 12px, khay/hộp t
 
 ### Navigation
 - **Thanh đầu trang (< 1024px):** nền `awning-green`, cao 56px, logo 32px + tên cửa hàng (Title, trắng). Bên phải: nút đăng xuất (icon Phosphor, vùng chạm 44px); từ 640px hiện thêm tên người đăng nhập.
-- **Tab màn hình chính (< 1024px):** ngay dưới thanh đầu trang, chữ `awning-green-mist` trên nền xanh, icon `bold`; tab đang mở chữ trắng + gạch chân 4px vàng mái hiên (chỗ vàng duy nhất của màn hình).
+- **Tab màn hình chính (< 1024px):** ngay dưới thanh đầu trang, chữ `awning-green-mist` trên nền xanh, icon `bold` (dưới 640px chỉ có chữ để 4–5 tab vừa một hàng; thêm nữa thì chuyển sang thanh điều hướng dưới đáy); tab đang mở chữ trắng + gạch chân 4px vàng mái hiên (chỗ vàng duy nhất của màn hình).
 - **Menu bên (≥ 1024px):** 240px, nền `awning-green`. Trên cùng: logo 40px + tên cửa hàng. Giữa: các mục (icon `bold` + Label 1rem, cao 48px, bo 8px); mục đang mở nền `awning-green-deep`, chữ trắng, chấm tròn 8px vàng mái hiên bên phải (chỗ vàng duy nhất). Mục chỉ dành cho chủ tiệm không hiện với nhân viên. Dưới cùng: tên + vai trò người đăng nhập và nút đăng xuất.
 
 ### Tables (≥ 1024px)

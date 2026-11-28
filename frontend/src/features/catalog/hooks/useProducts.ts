@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { createProduct, getProduct, getProductByBarcode, searchProducts, type CreateProductRequest, type ProductSearchParams } from '../../../api/catalog'
 import { normalizeBarcode } from '../../../lib/barcode'
@@ -7,6 +7,7 @@ import { normalizeBarcode } from '../../../lib/barcode'
 export const productKeys = {
   all: ['products'] as const,
   list: (params: ProductSearchParams) => ['products', 'list', params] as const,
+  browse: (params: ProductSearchParams) => ['products', 'browse', params] as const,
   detail: (id: number) => ['products', 'detail', id] as const,
   barcode: (code: string) => ['products', 'barcode', code] as const,
 }
@@ -20,6 +21,26 @@ export function useProductSearch(keyword: string) {
     queryFn: ({ signal }) => searchProducts(params, signal),
     enabled: trimmed.length >= 2,
     placeholderData: keepPreviousData,
+  })
+}
+
+// Danh sách sản phẩm có "Xem thêm" (màn hình Tồn kho): lọc tên, lọc tồn (cần kiểm kê, tồn âm, sắp hết).
+export function useProductBrowse(params: Omit<ProductSearchParams, 'page'>) {
+  return useInfiniteQuery({
+    queryKey: productKeys.browse(params),
+    queryFn: ({ pageParam, signal }) => searchProducts({ ...params, page: pageParam }, signal),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    placeholderData: keepPreviousData,
+  })
+}
+
+// Chi tiết một sản phẩm (đơn vị, tồn theo vị trí).
+export function useProduct(id: number) {
+  return useQuery({
+    queryKey: productKeys.detail(id),
+    queryFn: ({ signal }) => getProduct(id, signal),
+    enabled: Number.isInteger(id) && id > 0,
   })
 }
 

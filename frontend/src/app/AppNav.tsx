@@ -1,4 +1,4 @@
-import { PackageIcon, ReceiptIcon, ShoppingCartIcon, type Icon } from '@phosphor-icons/react'
+import { PackageIcon, ReceiptIcon, ShoppingCartIcon, WarehouseIcon, type Icon } from '@phosphor-icons/react'
 import { NavLink } from 'react-router'
 import type { UserRole } from '../api/auth'
 import { useAuthStore } from '../stores/useAuthStore'
@@ -15,6 +15,7 @@ const items: NavItem[] = [
   { to: '/', label: 'Bán hàng', Icon: ShoppingCartIcon },
   { to: '/hoa-don', label: 'Hóa đơn', Icon: ReceiptIcon },
   { to: '/nhap-hang', label: 'Nhập hàng', Icon: PackageIcon },
+  { to: '/ton-kho', label: 'Tồn kho', Icon: WarehouseIcon },
 ]
 
 const visibleFor = (role: UserRole | undefined) => items.filter((item) => !item.ownerOnly || role === 'owner')
@@ -33,9 +34,9 @@ export function AppNav({ variant }: { variant: 'tabs' | 'sidebar' }) {
             key={to}
             to={to}
             end={to === '/'}
-            className="flex min-h-11 shrink-0 items-center gap-1.5 border-b-4 border-transparent px-3 font-semibold text-brand-50 aria-[current=page]:border-accent aria-[current=page]:text-white focus-visible:outline-2 focus-visible:outline-white"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 border-b-4 border-transparent px-2.5 font-semibold sm:px-3 text-brand-50 aria-[current=page]:border-accent aria-[current=page]:text-white focus-visible:outline-2 focus-visible:outline-white"
           >
-            <Icon size="1.25em" weight="bold" aria-hidden="true" />
+            <Icon size="1.25em" weight="bold" aria-hidden="true" className="hidden sm:block" />
             {label}
           </NavLink>
         ))}

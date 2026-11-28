@@ -452,12 +452,7 @@ public sealed class GoodsReceiptService(IUnitOfWork unitOfWork)
                     view.CanSeeCost ? l.LineTotal : null,
                     view.CanSeeCost ? baseUnitCost : null,
                     l.ExpiryDate, l.LotNo, l.LotId,
-                    warning switch
-                    {
-                        ExpiryWarningLevel.Expired => "expired",
-                        ExpiryWarningLevel.NearExpiry => "near_expiry",
-                        _ => null,
-                    });
+                    ExpiryRules.ToCode(warning));
             })
             .ToList();
 

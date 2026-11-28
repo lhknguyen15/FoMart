@@ -13,11 +13,24 @@ public sealed record ProductSearchRequest
     // active | inactive | incomplete; bỏ trống = tất cả.
     public string? Status { get; init; }
 
+    // Lọc theo tồn (màn hình Tồn kho): needs_count | negative | low (xem ProductStockFilter); bỏ trống = tất cả.
+    public string? StockFilter { get; init; }
+
     [Range(1, int.MaxValue)]
     public int Page { get; init; } = 1;
 
     [Range(1, 100)]
     public int PageSize { get; init; } = 20;
+}
+
+// Giá trị của ProductSearchRequest.StockFilter.
+public static class ProductStockFilter
+{
+    public const string NeedsCount = "needs_count"; // đánh dấu cần kiểm kê (BR-01)
+    public const string Negative = "negative";      // tổng tồn âm
+    public const string Low = "low";                // dưới mức tồn tối thiểu (min_stock > 0), kể cả tồn âm
+
+    public static readonly IReadOnlyList<string> All = [NeedsCount, Negative, Low];
 }
 
 // Một dòng trong danh sách sản phẩm (SC-06).
@@ -30,7 +43,8 @@ public sealed record ProductListItemResponse(
     long BaseSalePrice,
     string? BaseBarcode,
     int TotalStock,
-    bool NeedsCount);
+    bool NeedsCount,
+    int MinStock);
 
 // Chi tiết sản phẩm (SC-07): thông tin chung, bảng đơn vị, tồn theo vị trí.
 public sealed record ProductResponse(

@@ -2,12 +2,11 @@ import { CaretRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import type { PaymentMethod, SaleListItemResponse, SaleSearchParams, SaleStatus } from '../../../api/sales'
+import { ChoiceChips, type Choice } from '../../../components/ui/ChoiceChips'
 import { DataTable, type DataColumn } from '../../../components/ui/DataTable'
 import { formatDate, formatDateTime, formatMoney, formatPaymentMethod, formatTime, todayInVietnam } from '../../../lib/format'
 import { SaleStatusBadge } from '../components/SaleStatusBadge'
 import { useSaleHistory } from '../hooks/useSales'
-
-type Choice<T extends string> = { value: T | ''; label: string }
 
 const statusChoices: Choice<SaleStatus>[] = [
   { value: '', label: 'Tất cả' },
@@ -85,8 +84,8 @@ export function SaleListPage() {
             </div>
           </div>
         </div>
-        <ChoiceRow label="Trạng thái" choices={statusChoices} value={status} onChange={setStatus} />
-        <ChoiceRow label="Hình thức" choices={paymentChoices} value={payment} onChange={setPayment} />
+        <ChoiceChips label="Trạng thái" choices={statusChoices} value={status} onChange={setStatus} />
+        <ChoiceChips label="Hình thức" choices={paymentChoices} value={payment} onChange={setPayment} />
       </div>
 
       <p className="text-sm text-ink-muted" aria-live="polite">
@@ -140,34 +139,5 @@ export function SaleListPage() {
         </button>
       )}
     </div>
-  )
-}
-
-interface ChoiceRowProps<T extends string> {
-  label: string
-  choices: Choice<T>[]
-  value: T | ''
-  onChange: (value: T | '') => void
-}
-
-// Một hàng nút chọn (thay cho select: bấm một chạm trên điện thoại).
-function ChoiceRow<T extends string>({ label, choices, value, onChange }: ChoiceRowProps<T>) {
-  return (
-    <fieldset className="flex flex-col gap-1">
-      <legend className="text-sm font-semibold">{label}</legend>
-      <div className="flex flex-wrap gap-2">
-        {choices.map((choice) => (
-          <button
-            key={choice.value || 'all'}
-            type="button"
-            aria-pressed={choice.value === value}
-            onClick={() => onChange(choice.value)}
-            className="min-h-11 rounded-lg border border-line bg-surface px-3 text-sm font-semibold aria-pressed:border-brand-600 aria-pressed:bg-brand-600 aria-pressed:text-white"
-          >
-            {choice.label}
-          </button>
-        ))}
-      </div>
-    </fieldset>
   )
 }

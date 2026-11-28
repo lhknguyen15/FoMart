@@ -28,6 +28,7 @@ export interface ProductListItemResponse {
   baseBarcode: string | null
   totalStock: number
   needsCount: boolean
+  minStock: number
 }
 
 export interface ProductUnitResponse {
@@ -69,9 +70,12 @@ export interface ProductResponse {
   stocks: ProductStockResponse[]
 }
 
+export type ProductStockFilter = 'needs_count' | 'negative' | 'low'
+
 export interface ProductSearchParams {
   keyword?: string
   status?: ProductStatus
+  stockFilter?: ProductStockFilter // needs_count: cần kiểm kê, negative: tồn âm, low: dưới mức tối thiểu
   page?: number
   pageSize?: number
 }
@@ -87,6 +91,7 @@ export async function searchProducts(params: ProductSearchParams, signal?: Abort
   const query = new URLSearchParams()
   if (params.keyword) query.set('keyword', params.keyword)
   if (params.status) query.set('status', params.status)
+  if (params.stockFilter) query.set('stockFilter', params.stockFilter)
   if (params.page) query.set('page', String(params.page))
   if (params.pageSize) query.set('pageSize', String(params.pageSize))
   const response = await request<PagedResult<ProductListItemResponse>>(`/api/products?${query.toString()}`, { signal })

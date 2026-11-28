@@ -191,7 +191,9 @@ public sealed class StockRepository(FoMartDbContext dbContext)
                 m.QtyChange,
                 moves.Where(x => x.Id <= m.Id).Sum(x => x.QtyChange),
                 m.UnitCost,
-                m.User.Name))
+                m.User.Name,
+                m.SaleLineId != null ? m.SaleLine!.SaleId : null,
+                m.ReceiptLineId != null ? m.ReceiptLine!.ReceiptId : null))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<StockMoveResponse>(items, request.Page, request.PageSize, total);
