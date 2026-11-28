@@ -146,7 +146,7 @@ export function DraftReceipt({ receipt }: { receipt: GoodsReceiptResponse }) {
   const activeSuppliers = (suppliers.data ?? []).filter((supplier) => supplier.isActive || supplier.id === receipt.supplierId)
 
   return (
-    <div className="grid gap-4 pb-[calc(9rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_26rem] lg:pb-4">
+    <div className="grid gap-4 pb-[calc(9rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6 lg:pb-4 xl:grid-cols-[minmax(0,1fr)_28rem] 2xl:grid-cols-[minmax(0,1fr)_34rem]">
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3">
           <h1 className="text-xl font-bold">
@@ -242,7 +242,7 @@ export function DraftReceipt({ receipt }: { receipt: GoodsReceiptResponse }) {
         )}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
         <h2 className="text-lg font-semibold">Hàng trong phiếu · {receipt.lines.length} dòng</h2>
         <ReceiptLineList
           lines={receipt.lines}

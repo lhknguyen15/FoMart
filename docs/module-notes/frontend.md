@@ -184,3 +184,42 @@ Nhánh `feature/frontend-auth`. Chạy Impeccable `init` và `document` (không 
 
 - **Người dùng chọn:** tinh thần "Quầy tạp hóa đầu ngõ", font Be Vietnam Pro tự lưu, component "chắc tay, phẳng".
 - **Không viết sidecar `.impeccable/design.json`:** không có live panel; thư mục `.impeccable/` đang bị bỏ qua trong git.
+
+### 28/11/2026 – Khung quản lý kiểu dashboard trên máy tính
+
+Nhánh `feature/frontend-dashboard-shell`. SC-03, SC-04, SC-10; NFR-07. Quyết định cùng người dùng: điện thoại giữ khung tác vụ hiện tại; từ 1024px là khung quản lý (menu bên, bảng); trang Tổng quan (SC-05) để giai đoạn 4 cùng báo cáo UC-10.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `frontend/src/app/AppNav.tsx` | Danh sách màn hình chính, hai dạng: tab dưới thanh đầu trang (< 1024px) và menu dọc (≥ 1024px); mục `ownerOnly` ẩn với nhân viên |
+| `frontend/src/components/ui/DataTable.tsx` | Bảng dùng chung: hàng tiêu đề nền giấy, kẻ ngang, cột số căn phải, cả hàng bấm được (ô đầu là liên kết thật cho bàn phím), chữ không xuống dòng, cuộn ngang trong khung khi thiếu chỗ, `className` của cột áp cho cả tiêu đề và ô (ẩn cột phụ bằng `hidden xl:table-cell`) |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `CLAUDE.md` | Thêm `AppNav.tsx` vào `app/`; quy tắc "điện thoại trước, từ `lg` là khung dashboard, bán hàng vẫn là màn hình tác vụ" |
+| `DESIGN.md` | Layout: hai khung theo bề rộng; Navigation: tab và menu bên (chấm vàng mái hiên ở mục đang mở); thêm Components > Tables |
+| `frontend/src/app/AppLayout.tsx` | < 1024px: thanh đầu trang + tab như cũ. 1024–1279px: thanh icon 80px (tên hiện khi rê chuột, trình đọc màn hình vẫn đọc). ≥ 1280px: menu 240px có tên tiệm, người đăng nhập, vai trò, đăng xuất. Nội dung tối đa 1440px |
+| `features/sales/pages/SaleListPage.tsx` | Bộ lọc một khối ngang; bảng trên máy tính, thẻ trên điện thoại; xem một ngày thì cột thời gian chỉ ghi giờ |
+| `features/purchasing/pages/ReceiptListPage.tsx` | Bảng phiếu nhập; cột "Nhận vào", "Người lập" chỉ hiện từ 1280px |
+| `features/sales/pages/SaleDetailPage.tsx`, `features/purchasing/components/ReceiptSummary.tsx` | Hai cột trên máy tính: tóm tắt + thao tác bên trái, các dòng bên phải |
+| `features/sales/pages/SalePage.tsx`, `features/purchasing/components/DraftReceipt.tsx` | Cột phải 24rem → 28rem → 32/34rem theo cỡ màn hình; dính cách mép trên 24px (không còn thanh đầu trang) |
+| `features/sales/components/CartList.tsx` | Mỗi dòng giỏ hai tầng: tên món đọc trọn, bên dưới +/− và thành tiền (trước đây tên bị cắt) |
+| `features/sales/components/CheckoutBar.tsx` | Gợi ý tiền khách đưa: vuốt ngang không thanh cuộn trên điện thoại, xuống dòng trên máy tính; nút thanh toán không xuống dòng |
+| `components/ui/ScanPanel.tsx` | Nút bật camera thu gọn thành một hàng trên máy tính (ở quầy thường dùng máy quét cầm tay) |
+| `lib/format.ts` | `formatTime()` |
+
+**Ghi chú**
+
+- **Impeccable critique + audit** (không có `scripts/` nên không chạy bộ phát hiện tự động; đánh giá trên code và ảnh chụp Playwright ở 412px, 1024px, 1912px):
+  - Critique: trang danh sách trên máy tính trước đây là một cột 670px giữa màn hình rộng, tên trong giỏ bị cắt, hàng gợi ý tiền có thanh cuộn ngang. Đã sửa cả ba.
+  - Audit (thang 0–4): Accessibility 3 (`aria-current` + nền cho mục đang mở, không chỉ màu; bảng có `caption`, `th scope`; ô đầu là liên kết thật), Performance 4 (không thêm thư viện; trang vẫn tải lười theo route), Theming 3 (chỉ token `@theme`; chưa có chế độ tối, ngoài phạm vi), Responsive 3 (đã sửa vỡ bảng và cột giỏ ở 1024px; ô chọn ngày vẫn theo ngôn ngữ trình duyệt), Implementation Integrity 4 (một `DataTable` dùng chung, không lặp style bảng). Tổng 17/20.
+- **Lỗi phát hiện khi làm:**
+  1. Ở 1024px menu 240px làm vùng nội dung còn 720px: bảng 7 cột vỡ dòng, cột trái màn hình bán hàng còn ~250px. Sửa bằng thanh icon 80px ở 1024–1279px, bỏ độ rộng cột cố định, `whitespace-nowrap` + cuộn ngang trong khung, ẩn cột phụ.
+  2. Script chụp ảnh bấm nhầm liên kết của bảng đang ẩn trên điện thoại: dùng `:visible`.
+  3. Docker Desktop không chạy khi mở lại phiên: API báo `/health` 503 cho tới khi bật Docker và container `healthy`.
+- **Hạn chế:** ô chọn ngày hiện theo ngôn ngữ của trình duyệt (`mm/dd/yyyy` nếu trình duyệt tiếng Anh); trang Tổng quan, mục "Báo cáo", "Cài đặt" (chỉ chủ tiệm) chưa có; chưa sắp xếp theo cột.
+- **Test:** `npm run build` + `npm run lint` sạch; chụp ảnh tự động (Playwright + Edge) các màn hình bán hàng, hóa đơn, chi tiết hóa đơn, nhập hàng, chi tiết phiếu nhập ở 412px, 1024px và 1912px.

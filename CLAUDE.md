@@ -191,7 +191,7 @@ frontend/
   src/
     main.tsx                      gắn QueryClientProvider + RouterProvider — một chỗ duy nhất
     index.css                     @import "tailwindcss" + @theme (màu, font của FoMart)
-    app/                          router.tsx, queryClient.ts, AppLayout.tsx, RequireAuth.tsx, NotFoundPage.tsx
+    app/                          router.tsx, queryClient.ts, AppLayout.tsx, AppNav.tsx (menu: tab trên điện thoại, menu bên trên máy tính), RequireAuth.tsx, NotFoundPage.tsx
     api/
       client.ts                   hàm request() bọc fetch: gắn JWT, refresh 1 lần khi 401, timeout, đọc HTTPResponseData
       types.ts                    HTTPResponseData<T>, PagedResult<T>, ApiError
@@ -235,7 +235,7 @@ frontend/
 
 - Chuỗi giao diện tiếng Việt viết thẳng trong component (chưa cần i18n); tên biến, hàm tiếng Anh.
 - Style chỉ bằng class Tailwind; màu và font khai báo token trong `@theme` ở `index.css`, không viết mã màu rời trong component.
-- Giao diện thiết kế cho điện thoại trước (bấm bằng ngón cái), máy tính là phụ. Nút chính tối thiểu 48 px (NFR-07); nút phụ tối thiểu 44 px.
+- Giao diện thiết kế cho điện thoại trước (bấm bằng ngón cái). Từ `lg` (1024 px) trở lên là khung quản lý kiểu dashboard: menu bên trái, dùng hết chiều rộng, danh sách thành bảng (DESIGN.md mục Layout). Màn hình bán hàng vẫn là màn hình tác vụ ở mọi cỡ. Nút chính tối thiểu 48 px (NFR-07); nút phụ tối thiểu 44 px.
 - Biến môi trường chỉ `VITE_*` trong `.env` (không commit), mẫu ở `.env.example`.
 
 ### Chạy khi dev

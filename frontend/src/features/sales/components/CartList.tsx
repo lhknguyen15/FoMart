@@ -27,10 +27,11 @@ export function CartList({ lines, onQty, disabled = false }: CartListProps) {
   return (
     <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface" aria-label="Giỏ hàng">
       {lines.map((line) => (
-        <li key={line.key} className="flex items-center gap-3 border-b border-line px-3 py-2.5 last:border-b-0">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate font-semibold">{line.productName}</span>
-            <span className="text-sm text-ink-muted tabular-nums">
+        // Hai tầng: tên món đọc trọn trên cùng (giỏ hẹp trên điện thoại và cột phải trên máy tính), bên dưới là +/− và thành tiền.
+        <li key={line.key} className="flex flex-col gap-1.5 border-b border-line px-3 py-2.5 last:border-b-0">
+          <div className="flex min-w-0 items-baseline justify-between gap-2">
+            <span className="min-w-0 font-semibold wrap-break-word">{line.productName}</span>
+            <span className="shrink-0 text-sm text-ink-muted tabular-nums">
               {line.unitName ?? 'chưa khai báo'} · {formatMoney(line.unitPrice)}
             </span>
           </div>
@@ -56,8 +57,8 @@ export function CartList({ lines, onQty, disabled = false }: CartListProps) {
             >
               <PlusIcon size="1.25rem" weight="bold" />
             </button>
+            <span className="ml-auto text-right text-lg font-semibold tabular-nums">{formatMoney(line.unitPrice * line.qty)}</span>
           </div>
-          <span className="w-24 text-right font-semibold tabular-nums">{formatMoney(line.unitPrice * line.qty)}</span>
         </li>
       ))}
     </ul>

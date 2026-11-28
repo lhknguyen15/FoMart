@@ -36,3 +36,8 @@ export function todayInVietnam(): string {
 export function formatPaymentMethod(method: 'cash' | 'transfer'): string {
   return method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'
 }
+
+// "2026-11-27T05:00:00Z" → "12:00" (giờ Việt Nam).
+export function formatTime(value: string): string {
+  return timeFormat.format(new Date(value))
+}
