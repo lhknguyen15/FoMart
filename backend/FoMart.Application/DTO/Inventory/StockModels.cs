@@ -12,6 +12,10 @@ public sealed record StockSearchRequest
     // false = bỏ các dòng tồn bằng 0 (lô đã bán hết).
     public bool IncludeZero { get; init; }
 
+    // Màn hình hạn dùng (UC-08): warning | expired | near_expiry (xem StockExpiryFilter). Có giá trị thì chỉ lấy
+    // lô còn tồn (> 0) và lô hết hạn sớm nhất đứng đầu; mốc "sắp hết" theo số ngày cảnh báo của cửa hàng.
+    public string? Expiry { get; init; }
+
     [Range(1, int.MaxValue)]
     public int Page { get; init; } = 1;
 
@@ -35,6 +39,27 @@ public sealed record StockLotResponse(
     string LocationName,
     int Qty,
     string? ExpiryWarning = null);
+
+// Giá trị của StockSearchRequest.Expiry.
+public static class StockExpiryFilter
+{
+    public const string Warning = "warning";        // đã hết hạn + sắp hết hạn
+    public const string Expired = "expired";        // hạn dùng trước hôm nay
+    public const string NearExpiry = "near_expiry"; // từ hôm nay tới trước hôm nay + số ngày cảnh báo
+
+    public static readonly IReadOnlyList<string> All = [Warning, Expired, NearExpiry];
+}
+
+// GET /api/stock/expiry-summary: tổng hợp lô cần xử lý hạn dùng (UC-08), chỉ tính lô còn tồn.
+// Value = số lượng × giá vốn lô, làm tròn về đồng; null khi người xem bị ẩn giá vốn (BR-08). Lô tạm không có hạn dùng nên không tính.
+public sealed record StockExpirySummaryResponse(
+    int WarnDays,
+    int ExpiredLots,
+    int ExpiredQty,
+    long? ExpiredValue,
+    int NearLots,
+    int NearQty,
+    long? NearValue);
 
 // GET /api/stock/moves: thẻ kho của một sản phẩm. From/To là ngày theo giờ Việt Nam.
 public sealed record StockMoveSearchRequest

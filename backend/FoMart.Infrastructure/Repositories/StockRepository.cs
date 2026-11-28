@@ -117,7 +117,8 @@ public sealed class StockRepository(FoMartDbContext dbContext)
     }
 
     // Tồn theo lô và vị trí: sắp theo sản phẩm, rồi FEFO (hạn dùng gần nhất, lô không hạn để sau), rồi FIFO.
-    public async Task<PagedResult<StockLotResponse>> SearchStockAsync(StockSearchRequest request, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<StockLotResponse>> SearchStockAsync(
+        StockSearchRequest request, DateOnly? expiryFrom, DateOnly? expiryBefore, CancellationToken cancellationToken = default)
     {
         var query = DbContext.Stocks.AsNoTracking();
         if (request.ProductId is { } productId)
@@ -126,13 +127,22 @@ public sealed class StockRepository(FoMartDbContext dbContext)
             query = query.Where(s => s.LocationId == locationId);
         if (!request.IncludeZero)
             query = query.Where(s => s.Qty != 0);
+        if (expiryBefore is { } before)
+        {
+            query = query.Where(s => s.Qty > 0 && s.Lot.ExpiryDate != null && s.Lot.ExpiryDate < before);
+            if (expiryFrom is { } from)
+                query = query.Where(s => s.Lot.ExpiryDate >= from);
+        }
 
         var total = await query.CountAsync(cancellationToken);
-        var items = await query
-            .OrderBy(s => s.Lot.Product.Name).ThenBy(s => s.ProductId)
-            .ThenBy(s => s.Lot.ExpiryDate == null).ThenBy(s => s.Lot.ExpiryDate)
-            .ThenBy(s => s.Lot.ReceivedAt).ThenBy(s => s.LotId)
-            .ThenBy(s => s.LocationId)
+        // Màn hình hạn dùng: lô gấp nhất trước; còn lại: theo sản phẩm, trong sản phẩm theo FEFO.
+        var ordered = expiryBefore is not null
+            ? query.OrderBy(s => s.Lot.ExpiryDate).ThenBy(s => s.Lot.Product.Name).ThenBy(s => s.LotId).ThenBy(s => s.LocationId)
+            : query.OrderBy(s => s.Lot.Product.Name).ThenBy(s => s.ProductId)
+                .ThenBy(s => s.Lot.ExpiryDate == null).ThenBy(s => s.Lot.ExpiryDate)
+                .ThenBy(s => s.Lot.ReceivedAt).ThenBy(s => s.LotId)
+                .ThenBy(s => s.LocationId);
+        var items = await ordered
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(s => new StockLotResponse(
@@ -151,6 +161,28 @@ public sealed class StockRepository(FoMartDbContext dbContext)
             .ToListAsync(cancellationToken);
 
         return new PagedResult<StockLotResponse>(items, request.Page, request.PageSize, total);
+    }
+
+    // Lô có hạn dùng trước nearBefore và còn tồn: tiệm nhỏ chỉ có vài chục dòng, nên lấy về rồi cộng ở bộ nhớ.
+    public async Task<StockExpirySummaryResponse> GetExpirySummaryAsync(
+        DateOnly today, DateOnly nearBefore, int warnDays, CancellationToken cancellationToken = default)
+    {
+        var rows = await DbContext.Stocks.AsNoTracking()
+            .Where(s => s.Qty > 0 && s.Lot.ExpiryDate != null && s.Lot.ExpiryDate < nearBefore)
+            .Select(s => new { Expiry = s.Lot.ExpiryDate!.Value, s.Qty, s.Lot.UnitCost })
+            .ToListAsync(cancellationToken);
+
+        var expired = rows.Where(r => r.Expiry < today).ToList();
+        var near = rows.Where(r => r.Expiry >= today).ToList();
+        // Giá trị theo giá vốn chính xác, làm tròn một lần về đồng (BR-11).
+        return new StockExpirySummaryResponse(
+            warnDays,
+            expired.Count,
+            expired.Sum(r => r.Qty),
+            MoneyRules.ToDong(expired.Sum(r => r.Qty * (r.UnitCost ?? 0m))),
+            near.Count,
+            near.Sum(r => r.Qty),
+            MoneyRules.ToDong(near.Sum(r => r.Qty * (r.UnitCost ?? 0m))));
     }
 
     // Thẻ kho, mới nhất trước. Balance tính bằng tổng các biến động có id ≤ id dòng hiện tại

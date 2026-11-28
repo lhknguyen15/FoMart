@@ -14,13 +14,23 @@ namespace FoMart.Api.Controllers;
 [ProducesResponseType(typeof(HTTPResponseData<object?>), StatusCodes.Status403Forbidden)]
 public sealed class StockController(StockService stockService) : ControllerBase
 {
-    // Tồn theo lô và vị trí (lọc sản phẩm, vị trí); lô hết hạn sớm đứng trước.
+    // Tồn theo lô và vị trí (lọc sản phẩm, vị trí, hạn dùng); lô hết hạn sớm đứng trước.
     [HttpGet]
     [ProducesResponseType(typeof(HTTPResponseData<PagedResult<StockLotResponse>?>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HTTPResponseData<PagedResult<StockLotResponse>?>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HTTPResponseData<PagedResult<StockLotResponse>?>>> Search(
         [FromQuery] StockSearchRequest request, CancellationToken cancellationToken)
     {
         var response = await stockService.SearchAsync(request, GetCurrentUserRole(), cancellationToken);
+        return StatusCode(response.StatusCode, response);
+    }
+
+    // Tổng hợp lô đã hết hạn / sắp hết hạn còn tồn (màn hình hạn dùng, UC-08).
+    [HttpGet("expiry-summary")]
+    [ProducesResponseType(typeof(HTTPResponseData<StockExpirySummaryResponse?>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HTTPResponseData<StockExpirySummaryResponse?>>> GetExpirySummary(CancellationToken cancellationToken)
+    {
+        var response = await stockService.GetExpirySummaryAsync(GetCurrentUserRole(), cancellationToken);
         return StatusCode(response.StatusCode, response);
     }
 

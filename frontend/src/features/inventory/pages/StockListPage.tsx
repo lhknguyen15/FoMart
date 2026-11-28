@@ -1,10 +1,12 @@
-import { MagnifyingGlassIcon } from '@phosphor-icons/react'
+import { CalendarXIcon, CaretRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { Link } from 'react-router'
 import type { ProductListItemResponse, ProductStockFilter } from '../../../api/catalog'
 import { ChoiceChips, type Choice } from '../../../components/ui/ChoiceChips'
 import { DataTable, type DataColumn } from '../../../components/ui/DataTable'
 import { useProductBrowse } from '../../catalog/hooks/useProducts'
 import { StockBadges } from '../components/StockBadges'
+import { useExpirySummary } from '../hooks/useStock'
 
 const filterChoices: Choice<ProductStockFilter>[] = [
   { value: '', label: 'Tất cả' },
@@ -33,6 +35,7 @@ const columns: DataColumn<ProductListItemResponse>[] = [
 export function StockListPage() {
   const [keyword, setKeyword] = useState('')
   const [filter, setFilter] = useState<ProductStockFilter | ''>('')
+  const summary = useExpirySummary()
   const products = useProductBrowse({ keyword: keyword.trim() || undefined, stockFilter: filter || undefined, pageSize: 30 })
   const items = products.data?.pages.flatMap((page) => page.items) ?? []
   const totalCount = products.data?.pages[0]?.totalCount ?? 0
@@ -40,6 +43,22 @@ export function StockListPage() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 lg:max-w-none">
       <h1 className="text-2xl font-bold">Tồn kho</h1>
+
+      {summary.data && summary.data.expiredLots + summary.data.nearLots > 0 && (
+        <Link
+          to="/han-dung"
+          className="flex items-center gap-3 rounded-xl border-2 border-warn/50 bg-warn/10 px-4 py-3 font-semibold active:bg-warn/20 lg:max-w-3xl"
+        >
+          <CalendarXIcon size="1.5rem" weight="bold" className="shrink-0 text-warn" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            {summary.data.expiredLots > 0 && <span className="text-bad">{summary.data.expiredLots} lô đã hết hạn</span>}
+            {summary.data.expiredLots > 0 && summary.data.nearLots > 0 && ', '}
+            {summary.data.nearLots > 0 && <span className="text-warn">{summary.data.nearLots} lô sắp hết hạn</span>}
+            <span className="block text-sm font-normal text-ink-muted">Xem danh sách hạn dùng</span>
+          </span>
+          <CaretRightIcon size="1.25rem" className="shrink-0 text-ink-muted" aria-hidden="true" />
+        </Link>
+      )}
 
       <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3 lg:flex-row lg:items-end lg:gap-6 lg:p-4">
         <div className="flex flex-col gap-1 lg:w-96">

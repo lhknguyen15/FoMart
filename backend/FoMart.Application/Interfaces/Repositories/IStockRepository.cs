@@ -39,7 +39,13 @@ public interface IStockRepository : IRepositoryBase<StockMove>
         IReadOnlyCollection<int> lotIds, string exceptDocType, CancellationToken cancellationToken = default);
 
     // Tồn theo lô và vị trí, có phân trang; lô hết hạn sớm đứng trước (FEFO).
-    Task<PagedResult<StockLotResponse>> SearchStockAsync(StockSearchRequest request, CancellationToken cancellationToken = default);
+    // expiryBefore có giá trị: chỉ lô còn tồn có hạn dùng trong [expiryFrom, expiryBefore), hạn sớm nhất đứng đầu (UC-08).
+    Task<PagedResult<StockLotResponse>> SearchStockAsync(
+        StockSearchRequest request, DateOnly? expiryFrom, DateOnly? expiryBefore, CancellationToken cancellationToken = default);
+
+    // Tổng hợp lô còn tồn đã hết hạn (trước today) và sắp hết hạn ([today, nearBefore)), kèm giá trị theo giá vốn.
+    Task<StockExpirySummaryResponse> GetExpirySummaryAsync(
+        DateOnly today, DateOnly nearBefore, int warnDays, CancellationToken cancellationToken = default);
 
     // Thẻ kho của một sản phẩm, mới nhất trước; khoảng [fromUtc, toUtc) theo UTC.
     Task<PagedResult<StockMoveResponse>> GetMovesAsync(
