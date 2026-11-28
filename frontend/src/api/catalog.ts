@@ -98,3 +98,45 @@ export async function getProduct(id: number, signal?: AbortSignal): Promise<Prod
   const response = await request<ProductResponse>(`/api/products/${id}`, { signal })
   return response.dataResponse
 }
+
+export interface CreateProductUnitRequest {
+  name: string
+  factor: number
+  barcode?: string | null
+  salePrice: number
+  isBase: boolean
+  isDefaultPurchase: boolean
+}
+
+// POST /api/products (chủ tiệm). Tạo nhanh khi quét mã mới: một đơn vị cơ sở, hệ số 1 (UC-01 nhánh tạo nhanh).
+export interface CreateProductRequest {
+  name: string
+  trackExpiry: boolean
+  defaultSupplierId?: number | null
+  units: CreateProductUnitRequest[]
+  confirmPriceWarning?: boolean
+}
+
+export async function createProduct(body: CreateProductRequest): Promise<ProductResponse> {
+  const response = await request<ProductResponse>('/api/products', { method: 'POST', body })
+  return response.dataResponse
+}
+
+// Application/DTO/Catalog/SupplierModels.cs
+export interface SupplierResponse {
+  id: number
+  name: string
+  phone: string | null
+  zalo: string | null
+  note: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+// Nhà cung cấp đang hợp tác (tìm theo tên không dấu hoặc số điện thoại; bỏ trống = tất cả).
+export async function searchSuppliers(keyword?: string, signal?: AbortSignal): Promise<SupplierResponse[]> {
+  const query = new URLSearchParams()
+  if (keyword) query.set('keyword', keyword)
+  const response = await request<SupplierResponse[]>(`/api/suppliers?${query.toString()}`, { signal })
+  return response.dataResponse
+}

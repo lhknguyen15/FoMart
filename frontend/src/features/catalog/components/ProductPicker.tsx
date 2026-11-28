@@ -1,20 +1,27 @@
 import { MagnifyingGlassIcon } from '@phosphor-icons/react'
 import { useState, type FormEvent } from 'react'
-import type { ProductListItemResponse, ProductResponse } from '../../../api/catalog'
+import type { ProductListItemResponse, ProductResponse, ProductUnitResponse } from '../../../api/catalog'
 import { ApiError } from '../../../api/types'
-import { formatMoney } from '../../../lib/format'
-import type { DeclaredItem } from '../../../stores/useCartStore'
-import { useProductLoader, useProductSearch } from '../../catalog/hooks/useProducts'
+import { useProductLoader, useProductSearch } from '../hooks/useProducts'
 
-interface ProductSearchProps {
-  onAdd: (item: DeclaredItem) => void
+interface ProductPickerProps {
+  inputId: string
+  // Chọn xong sản phẩm và đơn vị.
+  onPick: (product: ProductResponse, unit: ProductUnitResponse) => void
   // Gõ đủ một mã số rồi Enter (hoặc máy quét bàn phím khi ô đang được chọn): xử lý như quét mã.
   onBarcode: (code: string) => void
+  // Dòng phụ dưới tên sản phẩm / đơn vị: bán hàng hiện giá bán, nhập hàng hiện tồn.
+  describeItem: (item: ProductListItemResponse) => string
+  describeUnit: (unit: ProductUnitResponse) => string
+  // Đơn vị chọn sẵn khi sản phẩm chỉ có một lựa chọn hợp lý; trả undefined thì hỏi người dùng.
+  autoUnit?: (units: ProductUnitResponse[]) => ProductUnitResponse | undefined
 }
 
-// Tìm hàng không có mã hoặc không quét được (UC-05 nhánh phụ): gõ tên không dấu, chạm để thêm.
-// Sản phẩm có nhiều đơn vị đang bán (lon, lốc, thùng) thì chọn đơn vị trước khi thêm.
-export function ProductSearch({ onAdd, onBarcode }: ProductSearchProps) {
+const onlyUnit = (units: ProductUnitResponse[]) => (units.length === 1 ? units[0] : undefined)
+
+// Tìm sản phẩm theo tên không dấu rồi chọn đơn vị (UC-05 nhánh phụ, UC-04 bước 2).
+// Mảng Catalog sở hữu component này; màn hình bán hàng và nhập hàng dùng chung.
+export function ProductPicker({ inputId, onPick, onBarcode, describeItem, describeUnit, autoUnit = onlyUnit }: ProductPickerProps) {
   const [keyword, setKeyword] = useState('')
   const [choosing, setChoosing] = useState<ProductResponse | null>(null)
   const [loadingId, setLoadingId] = useState<number | null>(null)
@@ -37,19 +44,19 @@ export function ProductSearch({ onAdd, onBarcode }: ProductSearchProps) {
     }
   }
 
+  const choose = (product: ProductResponse, unit: ProductUnitResponse) => {
+    onPick(product, unit)
+    clear()
+  }
+
   const pick = async (item: ProductListItemResponse) => {
     setError(null)
     setLoadingId(item.id)
     try {
       const product = await loadProduct(item.id)
-      const units = product.units.filter((unit) => unit.isActive)
-      const only = units.length === 1 ? units[0] : undefined
-      if (only) {
-        onAdd({ unitId: only.id, productName: product.name, unitName: only.name, unitPrice: only.salePrice })
-        clear()
-      } else {
-        setChoosing(product)
-      }
+      const auto = autoUnit(product.units.filter((unit) => unit.isActive))
+      if (auto) choose(product, auto)
+      else setChoosing(product)
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Không tải được sản phẩm.')
     } finally {
@@ -63,13 +70,13 @@ export function ProductSearch({ onAdd, onBarcode }: ProductSearchProps) {
   return (
     <div className="flex flex-col gap-2">
       <form onSubmit={submit} role="search">
-        <label htmlFor="sale-search" className="sr-only">
+        <label htmlFor={inputId} className="sr-only">
           Tìm hàng theo tên hoặc mã
         </label>
         <div className="relative">
           <MagnifyingGlassIcon size="1.25rem" aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted" />
           <input
-            id="sale-search"
+            id={inputId}
             type="search"
             autoComplete="off"
             enterKeyHint="search"
@@ -96,14 +103,14 @@ export function ProductSearch({ onAdd, onBarcode }: ProductSearchProps) {
                 <button
                   key={unit.id}
                   type="button"
-                  onClick={() => {
-                    onAdd({ unitId: unit.id, productName: choosing.name, unitName: unit.name, unitPrice: unit.salePrice })
-                    clear()
-                  }}
+                  onClick={() => choose(choosing, unit)}
                   className="flex min-h-12 flex-col items-start justify-center rounded-lg border border-line bg-surface px-3 py-1.5 text-left active:bg-brand-100"
                 >
-                  <span className="font-semibold">{unit.name}{unit.factor > 1 ? ` (${unit.factor})` : ''}</span>
-                  <span className="text-sm tabular-nums text-ink-muted">{formatMoney(unit.salePrice)}</span>
+                  <span className="font-semibold">
+                    {unit.name}
+                    {unit.factor > 1 ? ` (${unit.factor})` : ''}
+                  </span>
+                  <span className="text-sm tabular-nums text-ink-muted">{describeUnit(unit)}</span>
                 </button>
               ))}
           </div>
@@ -127,9 +134,7 @@ export function ProductSearch({ onAdd, onBarcode }: ProductSearchProps) {
               >
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-semibold">{item.name}</span>
-                  <span className="text-sm text-ink-muted tabular-nums">
-                    {item.baseUnitName} · {formatMoney(item.baseSalePrice)} · tồn {item.totalStock}
-                  </span>
+                  <span className="text-sm text-ink-muted tabular-nums">{describeItem(item)}</span>
                 </span>
                 {loadingId === item.id && <span className="text-sm text-ink-muted">Đang mở…</span>}
               </button>

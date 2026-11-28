@@ -1,10 +1,17 @@
-import { SignOutIcon } from '@phosphor-icons/react'
-import { Outlet } from 'react-router'
+import { PackageIcon, ShoppingCartIcon, SignOutIcon } from '@phosphor-icons/react'
+import { NavLink, Outlet } from 'react-router'
 import { useLogout } from '../features/auth/hooks/useAuth'
 import { useStoreSettings } from '../features/store/hooks/useStore'
 import { useAuthStore } from '../stores/useAuthStore'
 
-// Khung chung mọi màn hình: thanh đầu trang có tên cửa hàng, người đang đăng nhập, nút đăng xuất.
+// Các màn hình chính trên thanh điều hướng (thêm báo cáo, danh mục... khi có).
+const navItems = [
+  { to: '/', label: 'Bán hàng', Icon: ShoppingCartIcon },
+  { to: '/nhap-hang', label: 'Nhập hàng', Icon: PackageIcon },
+]
+
+// Khung chung mọi màn hình: thanh đầu trang có tên cửa hàng, người đang đăng nhập, nút đăng xuất,
+// thanh chuyển giữa các màn hình chính.
 export function AppLayout() {
   const store = useStoreSettings()
   const user = useAuthStore((state) => state.session?.user)
@@ -31,6 +38,19 @@ export function AppLayout() {
             <SignOutIcon size="1.5rem" />
           </button>
         </div>
+        <nav aria-label="Màn hình chính" className="mx-auto flex max-w-5xl gap-1 px-2">
+          {navItems.map(({ to, label, Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className="flex min-h-11 items-center gap-1.5 border-b-4 border-transparent px-3 font-semibold text-brand-50 aria-[current=page]:border-accent aria-[current=page]:text-white focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Icon size="1.25em" weight="bold" aria-hidden="true" />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Outlet />

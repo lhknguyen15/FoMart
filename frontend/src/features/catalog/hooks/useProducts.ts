@@ -1,6 +1,6 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { getProduct, getProductByBarcode, searchProducts, type ProductSearchParams } from '../../../api/catalog'
+import { createProduct, getProduct, getProductByBarcode, searchProducts, type CreateProductRequest, type ProductSearchParams } from '../../../api/catalog'
 import { normalizeBarcode } from '../../../lib/barcode'
 
 // Query key của chủ đề Product: mọi nơi đọc / làm mới sản phẩm dùng đúng các key này.
@@ -52,4 +52,17 @@ export function useProductLoader() {
       }),
     [queryClient],
   )
+}
+
+// Tạo sản phẩm (chủ tiệm). Xong thì ghi chi tiết vào cache và bỏ các kết quả tìm / tra mã cũ
+// (mã vừa tạo trước đó tra ra 404 vẫn nằm trong cache).
+export function useCreateProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateProductRequest) => createProduct(body),
+    onSuccess: (product) => {
+      queryClient.setQueryData(productKeys.detail(product.id), product)
+      return queryClient.invalidateQueries({ queryKey: productKeys.all })
+    },
+  })
 }
