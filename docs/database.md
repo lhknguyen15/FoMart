@@ -362,6 +362,7 @@ Quy tắc:
 - Trạng thái là `VARCHAR` + `CHECK`. Domain giữ hằng số trùng khớp (ví dụ `SaleStatus.Paid = "paid"`).
 - Thời điểm là `DATETIME2(3)` UTC; chỉ đổi sang giờ Việt Nam khi hiển thị và khi gom báo cáo theo ngày. Hạn dùng là `DATE`.
 - Tiền là `BIGINT` (đồng); giá vốn `DECIMAL(14,4)`; tổng giá vốn `DECIMAL(18,4)`; số lượng `INT` theo đơn vị cơ sở.
-- Mã chứng từ sinh bằng sequence: `DH` đặt hàng, `PN` nhập, `HD` hóa đơn, `CK` chuyển kho, `XH` xuất hủy, `KK` kiểm kê, kèm 8 chữ số.
+- Mã chứng từ sinh bằng sequence: `DH` đặt hàng, `PN` nhập, `HD` hóa đơn, `CK` chuyển kho, `XH` xuất hủy, `KK` kiểm kê, kèm 8 chữ số. Sequence đặt `NO CACHE` (V004) để mã không nhảy khi SQL Server khởi động lại; mã vẫn hụt khi phiếu nháp bị xóa hoặc transaction rollback (mã cấp lúc tạo). Id `IDENTITY` (ví dụ `lots.id`) vẫn có thể nhảy khi khởi động lại, nên giao diện không hiện id cho người dùng.
+- Tiền ra màn hình là đồng nguyên: tổng giá vốn và lãi gộp tính từ giá vốn chính xác rồi làm tròn một lần ở `Domain/Rules/MoneyRules.cs` (nửa đồng làm tròn ra xa 0); lãi = doanh thu − giá vốn đã làm tròn.
 - Collation cả database là `Latin1_General_100_CI_AI`. Bảng `#temp` khai báo cột chuỗi bằng `COLLATE DATABASE_DEFAULT`.
 - Tên ràng buộc: `PK_`, `FK_`, `UQ_`, `UX_` (unique index), `IX_`, `CK_`, `DF_`, `TR_`, `v_` (view).

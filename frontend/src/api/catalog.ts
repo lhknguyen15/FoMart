@@ -140,3 +140,19 @@ export async function searchSuppliers(keyword?: string, signal?: AbortSignal): P
   const response = await request<SupplierResponse[]>(`/api/suppliers?${query.toString()}`, { signal })
   return response.dataResponse
 }
+
+// Application/DTO/Catalog/LocationModels.cs. type: storage = kho, shelf = kệ bán.
+export interface LocationResponse {
+  id: number
+  name: string
+  type: 'storage' | 'shelf'
+  isDefaultSale: boolean
+  isActive: boolean
+  stockQty: number
+}
+
+// Các vị trí đang dùng, vị trí bán mặc định đứng đầu (UC-02).
+export async function getLocations(signal?: AbortSignal): Promise<LocationResponse[]> {
+  const response = await request<LocationResponse[]>('/api/locations', { signal })
+  return response.dataResponse
+}

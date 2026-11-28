@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import type { SaleLineResponse } from '../../../api/sales'
+import type { SaleLineResponse, SaleLotResponse } from '../../../api/sales'
 import { ApiError } from '../../../api/types'
 import { formatDate, formatDateTime, formatMoney, formatPaymentMethod } from '../../../lib/format'
 import { useAuthStore } from '../../../stores/useAuthStore'
@@ -80,6 +80,13 @@ export function SaleDetailPage() {
   )
 }
 
+// Tên lô cho người bán: số lô in trên thùng và hạn dùng, không dùng id nội bộ (id có thể nhảy số).
+function describeLot(lot: SaleLotResponse): string {
+  if (lot.lotKind === 'provisional') return 'lô tạm'
+  const parts = [lot.lotNo ? `lô ${lot.lotNo}` : 'lô', lot.expiryDate ? `HSD ${formatDate(lot.expiryDate)}` : null]
+  return parts.filter(Boolean).join(' ')
+}
+
 function SaleLineItem({ line, costHidden }: { line: SaleLineResponse; costHidden: boolean }) {
   return (
     <li className="flex flex-col gap-0.5 border-b border-line px-3 py-2.5 last:border-b-0">
@@ -97,9 +104,7 @@ function SaleLineItem({ line, costHidden }: { line: SaleLineResponse; costHidden
       {line.lots.length > 0 && (
         <p className="text-sm text-ink-muted">
           Trừ:{' '}
-          {line.lots
-            .map((lot) => `${lot.qty} từ ${lot.lotKind === 'provisional' ? 'lô tạm' : `lô #${lot.lotId}`}${lot.expiryDate ? ` (HSD ${formatDate(lot.expiryDate)})` : ''}`)
-            .join(', ')}
+          {line.lots.map((lot) => `${lot.qty} từ ${describeLot(lot)}`).join(', ')}
         </p>
       )}
     </li>

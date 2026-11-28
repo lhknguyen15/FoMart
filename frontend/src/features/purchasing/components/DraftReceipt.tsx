@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../stores/useAuthStore'
 import { ProductPicker } from '../../catalog/components/ProductPicker'
 import { QuickProductForm } from '../../catalog/components/QuickProductForm'
 import { useBarcodeLookup, useProductLoader } from '../../catalog/hooks/useProducts'
+import { useLocations } from '../../catalog/hooks/useLocations'
 import { useSuppliers } from '../../catalog/hooks/useSuppliers'
 import {
   useAddReceiptLine,
@@ -41,6 +42,8 @@ const forPeople = (message: string) => message.split(' Gửi lại với')[0] ??
 
 const errorText = (caught: unknown, fallback: string) => (caught instanceof ApiError ? caught.message : fallback)
 
+const selectClass = 'h-12 w-full rounded-lg border border-line bg-surface px-3 text-base focus:border-brand-600 focus:outline-2 focus:outline-brand-500/40'
+
 // Chọn đơn vị khi nhập: đơn vị nhập mặc định (thường là thùng), không có thì đơn vị cơ sở.
 const purchaseUnit = (units: ProductResponse['units']) => units.find((unit) => unit.isDefaultPurchase) ?? units.find((unit) => unit.isBase) ?? units[0]
 
@@ -50,6 +53,7 @@ export function DraftReceipt({ receipt }: { receipt: GoodsReceiptResponse }) {
   const canSeeCost = !receipt.pricesHidden
   const navigate = useNavigate()
   const suppliers = useSuppliers()
+  const locations = useLocations()
   const lookup = useBarcodeLookup()
   const loadProduct = useProductLoader()
   const updateHeader = useUpdateReceipt(receipt.id)
@@ -144,6 +148,14 @@ export function DraftReceipt({ receipt }: { receipt: GoodsReceiptResponse }) {
 
   const busyLine = addLine.isPending || updateLine.isPending
   const activeSuppliers = (suppliers.data ?? []).filter((supplier) => supplier.isActive || supplier.id === receipt.supplierId)
+  const receivingLocations = (locations.data ?? []).filter((location) => location.isActive || location.id === receipt.locationId)
+
+  // Đổi đầu phiếu: API cần đủ nhà cung cấp + vị trí + ghi chú, nên giữ nguyên phần không đổi.
+  const saveHeader = (change: { supplierId?: number | null; locationId?: number }, failText: string) =>
+    updateHeader.mutate(
+      { supplierId: receipt.supplierId, locationId: receipt.locationId, note: receipt.note, ...change },
+      { onError: (caught) => setNotice({ kind: 'bad', text: errorText(caught, failText) }) },
+    )
 
   return (
     <div className="grid gap-4 pb-[calc(9rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6 lg:pb-4 xl:grid-cols-[minmax(0,1fr)_28rem] 2xl:grid-cols-[minmax(0,1fr)_34rem]">
@@ -152,29 +164,52 @@ export function DraftReceipt({ receipt }: { receipt: GoodsReceiptResponse }) {
           <h1 className="text-xl font-bold">
             Phiếu nhập <span className="tabular-nums">{receipt.code}</span> <span className="text-base font-semibold text-warn">· Nháp</span>
           </h1>
-          <label htmlFor="receipt-supplier" className="text-sm font-semibold">
-            Nhà cung cấp
-          </label>
-          <select
-            id="receipt-supplier"
-            value={receipt.supplierId ?? ''}
-            disabled={updateHeader.isPending}
-            onChange={(event) =>
-              updateHeader.mutate(
-                { supplierId: event.target.value ? Number(event.target.value) : null, locationId: receipt.locationId, note: receipt.note },
-                { onError: (caught) => setNotice({ kind: 'bad', text: errorText(caught, 'Không đổi được nhà cung cấp.') }) },
-              )
-            }
-            className="h-12 w-full rounded-lg border border-line bg-surface px-3 text-base focus:border-brand-600 focus:outline-2 focus:outline-brand-500/40"
-          >
-            <option value="">Chưa chọn (hàng mua lẻ)</option>
-            {activeSuppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-sm text-ink-muted">Nhận vào: {receipt.locationName}</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="receipt-supplier" className="text-sm font-semibold">
+                Nhà cung cấp
+              </label>
+              <select
+                id="receipt-supplier"
+                value={receipt.supplierId ?? ''}
+                disabled={updateHeader.isPending}
+                onChange={(event) =>
+                  saveHeader({ supplierId: event.target.value ? Number(event.target.value) : null }, 'Không đổi được nhà cung cấp.')
+                }
+                className={selectClass}
+              >
+                <option value="">Chưa chọn (hàng mua lẻ)</option>
+                {activeSuppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Tiệm có từ hai vị trí (kho sau + kệ) mới cần chọn; tiệm một vị trí thì luôn nhận vào kệ (UC-04 bước 1). */}
+            {receivingLocations.length > 1 ? (
+              <div className="flex flex-col gap-1">
+                <label htmlFor="receipt-location" className="text-sm font-semibold">
+                  Nhận vào
+                </label>
+                <select
+                  id="receipt-location"
+                  value={receipt.locationId}
+                  disabled={updateHeader.isPending}
+                  onChange={(event) => saveHeader({ locationId: Number(event.target.value) }, 'Không đổi được vị trí nhận.')}
+                  className={selectClass}
+                >
+                  {receivingLocations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.name}{location.type === 'shelf' ? ' · bán được ngay' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="self-end text-sm text-ink-muted sm:pb-3">Nhận vào: {receipt.locationName}</p>
+            )}
+          </div>
         </div>
 
         <ScanPanel onCode={(code) => void handleCode(code)} />
