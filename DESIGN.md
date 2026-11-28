@@ -160,9 +160,15 @@ Tên token ở đây ↔ class Tailwind trong code: `awning-green` = `brand-600`
 
 ## Layout
 
-- **Điện thoại trước:** một cột, lề ngang 16px, khoảng cách giữa khối 16px (nhóm chặt 8px). Nội dung tối đa 768px (`max-w-3xl`) căn giữa trên màn hình lớn.
-- **Vùng ngón cái:** hành động chính của màn hình thao tác nằm ở nửa dưới, rộng hết cột. Thanh đầu trang dính trên cùng (56px) và tôn trọng `safe-area-inset`.
-- **Máy tính:** danh sách và bảng dùng thêm cột; màn hình bán hàng có thể chia hai (giỏ | quét/tìm). Không kéo dài dòng chữ quá 75 ký tự.
+Hai khung theo bề rộng màn hình, cùng một bộ token và component.
+
+- **Điện thoại và máy tính bảng (< 1024px): khung tác vụ.** Thanh đầu trang xanh dính trên cùng (56px, tôn trọng `safe-area-inset`) + hàng tab màn hình chính ngay dưới. Một cột, lề ngang 16px, khoảng cách giữa khối 16px (nhóm chặt 8px). Danh sách là thẻ xếp dọc.
+- **Vùng ngón cái:** hành động chính của màn hình thao tác nằm ở nửa dưới, rộng hết cột; trên điện thoại thanh thanh toán / hoàn tất dính đáy.
+- **Máy tính (≥ 1024px, `lg`): khung quản lý kiểu dashboard.** Menu bên trái rộng 240px, nền `awning-green`, dính toàn chiều cao; vùng nội dung nền `shop-paper` dùng hết chiều rộng còn lại, lề 32px, tối đa 1440px. Không còn thanh đầu trang: tên cửa hàng, người đăng nhập, đăng xuất nằm trong menu bên.
+  - **Trang danh sách** (hóa đơn, phiếu nhập, tồn kho): tiêu đề + bộ lọc một hàng, bên dưới là **bảng** (xem Components > Tables).
+  - **Trang chi tiết:** hai cột, thông tin tóm tắt bên trái (tối đa 420px), các dòng bên phải.
+  - **Trang thao tác** (bán hàng, phiếu nhập nháp): hai cột, trái là quét / tìm / form, phải là giỏ hoặc các dòng + tổng + nút chính, dính khi cuộn. Màn hình bán hàng vẫn là màn hình tác vụ, không thành dashboard.
+- **Không kéo dài dòng chữ quá 75 ký tự**; bảng thì được rộng.
 - **Nhịp khoảng cách:** bội số 4px; dùng các bước 4 / 8 / 16 / 24 / 32.
 
 ## Elevation & Depth
@@ -202,7 +208,15 @@ Bo góc vừa và nhất quán: ô nhập 8px, nút và thẻ 12px, khay/hộp t
 - Không lồng thẻ trong thẻ.
 
 ### Navigation
-- **Thanh đầu trang:** nền `awning-green`, cao 56px, logo 32px + tên cửa hàng (Title, trắng). Bên phải: người đang đăng nhập và nút đăng xuất (icon Phosphor, vùng chạm 44px).
+- **Thanh đầu trang (< 1024px):** nền `awning-green`, cao 56px, logo 32px + tên cửa hàng (Title, trắng). Bên phải: nút đăng xuất (icon Phosphor, vùng chạm 44px); từ 640px hiện thêm tên người đăng nhập.
+- **Tab màn hình chính (< 1024px):** ngay dưới thanh đầu trang, chữ `awning-green-mist` trên nền xanh, icon `bold`; tab đang mở chữ trắng + gạch chân 4px vàng mái hiên (chỗ vàng duy nhất của màn hình).
+- **Menu bên (≥ 1024px):** 240px, nền `awning-green`. Trên cùng: logo 40px + tên cửa hàng. Giữa: các mục (icon `bold` + Label 1rem, cao 48px, bo 8px); mục đang mở nền `awning-green-deep`, chữ trắng, chấm tròn 8px vàng mái hiên bên phải (chỗ vàng duy nhất). Mục chỉ dành cho chủ tiệm không hiện với nhân viên. Dưới cùng: tên + vai trò người đăng nhập và nút đăng xuất.
+
+### Tables (≥ 1024px)
+- Thẻ `surface` viền tóc bo 12px bọc cả bảng; hàng tiêu đề Label `ink-muted` trên nền `shop-paper`, kẻ ngang 1px `hairline`, không kẻ dọc.
+- Hàng cao tối thiểu 48px, cả hàng bấm được (mở chi tiết) với nền `awning-green-mist` khi rê chuột / focus; ô đầu là liên kết thật để dùng bàn phím.
+- Cột số (tiền, số lượng) căn phải, `tabular-nums`; trạng thái là huy hiệu có chữ.
+- Dưới 1024px cùng dữ liệu đó hiện thành danh sách thẻ.
 
 ### Scan Result Card (thành phần đặc trưng)
 Thẻ kết quả ngay dưới khung camera: mã số Display-cỡ-nhỏ (1.5rem, 700, tabular), tên sản phẩm Title, đơn vị · giá. Viền 2px và nền pha 10% theo trạng thái (`state-ok` có trong danh mục, `state-warn` chưa có, `state-bad` lỗi), kèm chữ mô tả trạng thái. Khung camera chớp viền `state-ok` 600ms mỗi lần đọc được mã (tắt hiệu ứng khi `prefers-reduced-motion`).

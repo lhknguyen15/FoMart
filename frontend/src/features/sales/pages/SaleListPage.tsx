@@ -1,8 +1,9 @@
 import { CaretRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { PaymentMethod, SaleSearchParams, SaleStatus } from '../../../api/sales'
-import { formatDate, formatDateTime, formatMoney, formatPaymentMethod, todayInVietnam } from '../../../lib/format'
+import type { PaymentMethod, SaleListItemResponse, SaleSearchParams, SaleStatus } from '../../../api/sales'
+import { DataTable, type DataColumn } from '../../../components/ui/DataTable'
+import { formatDate, formatDateTime, formatMoney, formatPaymentMethod, formatTime, todayInVietnam } from '../../../lib/format'
 import { SaleStatusBadge } from '../components/SaleStatusBadge'
 import { useSaleHistory } from '../hooks/useSales'
 
@@ -18,6 +19,25 @@ const paymentChoices: Choice<PaymentMethod>[] = [
   { value: '', label: 'Mọi hình thức' },
   { value: 'cash', label: 'Tiền mặt' },
   { value: 'transfer', label: 'Chuyển khoản' },
+]
+
+// Cột của bảng hóa đơn trên máy tính (DESIGN.md > Tables). Đang xem một ngày thì cột thời gian chỉ ghi giờ;
+// tìm theo mã (nhiều ngày) thì ghi đủ ngày giờ.
+const saleColumns = (oneDay: boolean): DataColumn<SaleListItemResponse>[] => [
+  { header: 'Mã', cell: (sale) => <span className="tabular-nums">{sale.code}</span> },
+  {
+    header: oneDay ? 'Giờ' : 'Thời gian',
+    cell: (sale) => <span className="tabular-nums">{oneDay ? formatTime(sale.createdAt) : formatDateTime(sale.createdAt)}</span>,
+  },
+  { header: 'Hình thức', cell: (sale) => formatPaymentMethod(sale.paymentMethod) },
+  { header: 'Người bán', cell: (sale) => sale.createdByName },
+  { header: 'Số món', cell: (sale) => sale.lineCount, align: 'right' },
+  {
+    header: 'Tổng',
+    cell: (sale) => <span className={`font-semibold ${sale.status === 'cancelled' ? 'text-ink-muted line-through' : ''}`}>{formatMoney(sale.total)}</span>,
+    align: 'right',
+  },
+  { header: 'Trạng thái', cell: (sale) => <SaleStatusBadge status={sale.status} /> },
 ]
 
 const inputClass = 'h-12 w-full rounded-lg border border-line bg-surface px-3 text-base focus:border-brand-600 focus:outline-2 focus:outline-brand-500/40'
@@ -44,11 +64,11 @@ export function SaleListPage() {
   const totalCount = history.data?.pages[0]?.totalCount ?? 0
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 lg:max-w-none">
       <h1 className="text-2xl font-bold">Hóa đơn</h1>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3">
-        <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-6 lg:p-4">
+        <div className="grid grid-cols-2 gap-2 lg:w-[28rem]">
           <div className="flex flex-col gap-1">
             <label htmlFor="sale-day" className="text-sm font-semibold">
               Ngày bán
@@ -75,7 +95,19 @@ export function SaleListPage() {
       {history.isError && <p className="font-semibold text-bad">{history.error.message}</p>}
 
       {items.length > 0 && (
-        <ul className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface ${history.isPlaceholderData ? 'opacity-60' : ''}`}>
+        <div className="hidden lg:block">
+          <DataTable
+            caption="Danh sách hóa đơn"
+            rows={items}
+            rowKey={(sale) => sale.id}
+            rowHref={(sale) => `/hoa-don/${sale.id}`}
+            dimmed={history.isPlaceholderData}
+            columns={saleColumns(code === '')}
+          />
+        </div>
+      )}
+      {items.length > 0 && (
+        <ul className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface lg:hidden ${history.isPlaceholderData ? 'opacity-60' : ''}`}>
           {items.map((sale) => (
             <li key={sale.id} className="border-b border-line last:border-b-0">
               <Link to={`/hoa-don/${sale.id}`} className="flex min-h-16 items-center gap-3 px-3 py-2.5 active:bg-brand-50">
@@ -102,7 +134,7 @@ export function SaleListPage() {
           type="button"
           onClick={() => void history.fetchNextPage()}
           disabled={history.isFetchingNextPage}
-          className="min-h-11 rounded-lg border border-line bg-surface px-4 font-semibold active:bg-brand-50 disabled:opacity-60"
+          className="min-h-11 rounded-lg border border-line bg-surface px-4 font-semibold active:bg-brand-50 disabled:opacity-60 lg:self-start"
         >
           {history.isFetchingNextPage ? 'Đang tải…' : `Xem thêm (còn ${totalCount - items.length})`}
         </button>

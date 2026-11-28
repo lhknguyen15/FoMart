@@ -11,7 +11,7 @@ export function ReceiptSummary({ receipt }: { receipt: GoodsReceiptResponse }) {
   const completed = receipt.status === 'completed'
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 lg:grid lg:max-w-none lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] lg:items-start lg:gap-6">
       <div className={`flex flex-col gap-1 rounded-xl border-2 px-4 py-3 ${completed ? 'border-ok bg-ok/10' : 'border-bad bg-bad/10'}`}>
         <h1 className="text-xl font-bold">
           Phiếu nhập <span className="tabular-nums">{receipt.code}</span> · {completed ? 'Đã nhập kho' : 'Đã hủy'}
@@ -32,7 +32,9 @@ export function ReceiptSummary({ receipt }: { receipt: GoodsReceiptResponse }) {
         {receipt.total !== null && <p className="text-2xl font-bold tabular-nums">{formatMoney(receipt.total)}</p>}
       </div>
 
-      <ReceiptLineList lines={receipt.lines} pricesHidden={receipt.pricesHidden} />
+      <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1">
+        <ReceiptLineList lines={receipt.lines} pricesHidden={receipt.pricesHidden} />
+      </div>
 
       {completed && role === 'owner' && <CancelReceiptForm receiptId={receipt.id} />}
 

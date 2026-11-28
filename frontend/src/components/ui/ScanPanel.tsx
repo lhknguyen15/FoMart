@@ -74,7 +74,8 @@ export function ScanPanel({ onCode }: ScanPanelProps) {
             setMessage(null)
             setCameraOn(true)
           }}
-          className="flex h-28 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-600 bg-brand-50 font-semibold text-brand-700 active:bg-brand-100"
+          // Máy tính ở quầy thường dùng máy quét cầm tay: nút bật camera thu gọn thành một hàng.
+          className="flex h-28 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-600 bg-brand-50 font-semibold text-brand-700 active:bg-brand-100 lg:h-14 lg:flex-row lg:gap-2"
         >
           <CameraIcon size="2rem" weight="duotone" aria-hidden="true" />
           Bật camera quét mã

@@ -48,7 +48,8 @@ export function CheckoutBar({ total, itemCount, busy, onCash, onTransfer }: Chec
       </div>
 
       {suggestions.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Tiền khách đưa">
+        // Điện thoại: một hàng vuốt ngang (ẩn thanh cuộn). Máy tính: xuống dòng, không có thanh cuộn ngang.
+        <div className="flex gap-2 overflow-x-auto scrollbar-none lg:flex-wrap lg:overflow-visible" role="group" aria-label="Tiền khách đưa">
           {suggestions.map((amount) => (
             <button
               key={amount}
@@ -73,7 +74,7 @@ export function CheckoutBar({ total, itemCount, busy, onCash, onTransfer }: Chec
             onCash(cashGiven)
             setCash(null)
           }}
-          className="h-14 rounded-xl bg-brand-600 text-lg font-semibold text-white transition-transform active:scale-[0.98] active:bg-brand-700 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          className="h-14 rounded-xl bg-brand-600 text-lg font-semibold whitespace-nowrap text-white transition-transform active:scale-[0.98] active:bg-brand-700 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         >
           {busy ? 'Đang lưu…' : 'Xong · Tiền mặt'}
         </button>
@@ -81,7 +82,7 @@ export function CheckoutBar({ total, itemCount, busy, onCash, onTransfer }: Chec
           type="button"
           disabled={empty || busy}
           onClick={onTransfer}
-          className="flex h-14 items-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold text-ink active:bg-brand-50 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          className="flex h-14 items-center gap-2 rounded-xl border border-line bg-surface px-4 font-semibold whitespace-nowrap text-ink active:bg-brand-50 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         >
           <QrCodeIcon size="1.375rem" weight="bold" aria-hidden="true" />
           Chuyển khoản

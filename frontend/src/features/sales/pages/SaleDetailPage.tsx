@@ -36,7 +36,7 @@ export function SaleDetailPage() {
   const tone = data.status === 'paid' ? 'border-ok bg-ok/10' : data.status === 'cancelled' ? 'border-bad bg-bad/10' : 'border-warn bg-warn/10'
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 lg:grid lg:max-w-none lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] lg:items-start lg:gap-6">
       <div className={`flex flex-col gap-1 rounded-xl border-2 px-4 py-3 ${tone}`}>
         <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold">
           Hóa đơn <span className="tabular-nums">{data.code}</span>
@@ -67,7 +67,7 @@ export function SaleDetailPage() {
         )}
       </div>
 
-      <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface">
+      <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface lg:col-start-2 lg:row-span-4 lg:row-start-1">
         {data.lines.map((line) => (
           <SaleLineItem key={line.id} line={line} costHidden={data.costHidden} />
         ))}

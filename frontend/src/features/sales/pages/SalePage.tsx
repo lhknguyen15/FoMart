@@ -98,7 +98,7 @@ export function SalePage() {
   }
 
   return (
-    <div onPointerDown={unlockAudio} className="grid gap-4 pb-[calc(13.5rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_24rem] lg:pb-4">
+    <div onPointerDown={unlockAudio} className="grid gap-4 pb-[calc(13.5rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6 lg:pb-4 xl:grid-cols-[minmax(0,1fr)_28rem] 2xl:grid-cols-[minmax(0,1fr)_32rem]">
       <h1 className="sr-only">Bán hàng</h1>
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -167,7 +167,7 @@ export function SalePage() {
         )}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
         {outcome && (
           <div role="status" className={`flex flex-col gap-1 rounded-xl border-2 px-4 py-3 ${outcome.status === 'paid' ? 'border-ok bg-ok/10' : 'border-warn bg-warn/10'}`}>
             <p className="font-semibold">

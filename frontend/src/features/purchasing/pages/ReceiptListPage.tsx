@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import type { GoodsReceiptListItemResponse, GoodsReceiptSearchParams } from '../../../api/purchasing'
 import { ApiError } from '../../../api/types'
+import { DataTable, type DataColumn } from '../../../components/ui/DataTable'
 import { formatDateTime, formatMoney } from '../../../lib/format'
 import { useCreateReceipt, useReceiptList } from '../hooks/useGoodsReceipts'
 
@@ -34,7 +35,7 @@ export function ReceiptListPage() {
   const recentItems = (recent.data?.items ?? []).filter((item) => item.status !== 'draft')
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 lg:max-w-none">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Nhập hàng</h1>
         <button
@@ -59,6 +60,21 @@ export function ReceiptListPage() {
   )
 }
 
+// Cột của bảng phiếu nhập trên máy tính (DESIGN.md > Tables). Tổng trống khi người xem bị ẩn giá (BR-08).
+const receiptColumns: DataColumn<GoodsReceiptListItemResponse>[] = [
+  { header: 'Mã', cell: (item) => <span className="tabular-nums">{item.code}</span> },
+  { header: 'Nhà cung cấp', cell: (item) => item.supplierName ?? <span className="text-ink-muted">Chưa chọn</span> },
+  { header: 'Nhận vào', cell: (item) => item.locationName, className: 'hidden xl:table-cell' },
+  { header: 'Người lập', cell: (item) => item.createdByName, className: 'hidden xl:table-cell' },
+  { header: 'Thời gian', cell: (item) => <span className="tabular-nums">{formatDateTime(item.completedAt ?? item.createdAt)}</span> },
+  { header: 'Số dòng', cell: (item) => item.lineCount, align: 'right' },
+  { header: 'Tổng', cell: (item) => (item.total !== null ? <span className="font-semibold">{formatMoney(item.total)}</span> : '—'), align: 'right' },
+  {
+    header: 'Trạng thái',
+    cell: (item) => <span className={`rounded px-1.5 text-xs font-semibold ${statusClass[item.status]}`}>{statusText[item.status]}</span>,
+  },
+]
+
 interface ReceiptSectionProps {
   title: string
   query: { isPending: boolean; isError: boolean; error: Error | null }
@@ -74,7 +90,12 @@ function ReceiptSection({ title, query, items, empty }: ReceiptSectionProps) {
       {query.isError && <p className="text-sm font-semibold text-bad">{query.error?.message}</p>}
       {!query.isPending && !query.isError && items.length === 0 && <p className="text-sm text-ink-muted">{empty}</p>}
       {items.length > 0 && (
-        <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface">
+        <div className="hidden lg:block">
+          <DataTable caption={`Phiếu nhập: ${title}`} rows={items} rowKey={(item) => item.id} rowHref={(item) => `/nhap-hang/${item.id}`} columns={receiptColumns} />
+        </div>
+      )}
+      {items.length > 0 && (
+        <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface lg:hidden">
           {items.map((item) => (
             <li key={item.id} className="border-b border-line last:border-b-0">
               <Link to={`/nhap-hang/${item.id}`} className="flex min-h-16 items-center gap-3 px-3 py-2.5 active:bg-brand-50">
