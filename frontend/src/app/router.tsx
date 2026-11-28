@@ -18,6 +18,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <SalePage /> },
+      { path: 'hoa-don', lazy: async () => ({ Component: (await import('../features/sales/pages/SaleListPage')).SaleListPage }) },
+      { path: 'hoa-don/:id', lazy: async () => ({ Component: (await import('../features/sales/pages/SaleDetailPage')).SaleDetailPage }) },
       // Nhập hàng tải lười theo route: màn hình bán hàng (mở nhiều nhất) không phải tải phần này.
       { path: 'nhap-hang', lazy: async () => ({ Component: (await import('../features/purchasing/pages/ReceiptListPage')).ReceiptListPage }) },
       { path: 'nhap-hang/:id', lazy: async () => ({ Component: (await import('../features/purchasing/pages/ReceiptPage')).ReceiptPage }) },

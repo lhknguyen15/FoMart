@@ -9,10 +9,11 @@ const VietQrPanel = lazy(() => import('./VietQrPanel').then((module) => ({ defau
 
 interface PendingSalesProps {
   focusId?: string // hóa đơn vừa tạo ở máy này: mở sẵn mã QR cho khách quét
+  onlyId?: string // trang chi tiết hóa đơn: chỉ hiện đúng hóa đơn này
 }
 
 // Hóa đơn chờ chuyển khoản (UC-05): giỏ đã được giữ lại để bán tiếp khách khác; khách chuyển xong thì bấm "Đã nhận".
-export function PendingSales({ focusId }: PendingSalesProps) {
+export function PendingSales({ focusId, onlyId }: PendingSalesProps) {
   const pending = usePendingSales()
   const confirm = useConfirmSalePayment()
   const cancel = useCancelSale()
@@ -23,7 +24,7 @@ export function PendingSales({ focusId }: PendingSalesProps) {
   const [qrToggled, setQrToggled] = useState<Record<string, boolean>>({})
   const isQrOpen = (id: string) => qrToggled[id] ?? id === focusId
 
-  const items = pending.data?.items ?? []
+  const items = (pending.data?.items ?? []).filter((sale) => !onlyId || sale.id === onlyId)
   if (items.length === 0) return null
 
   const received = (id: string, confirmExpired = false) => {

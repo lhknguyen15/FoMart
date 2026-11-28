@@ -1,11 +1,34 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { cancelSale, confirmSalePayment, createSale, searchSales, type CreateSaleRequest, type SaleSearchParams } from '../../../api/sales'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { cancelSale, confirmSalePayment, createSale, getSale, searchSales, type CreateSaleRequest, type SaleSearchParams } from '../../../api/sales'
 import { productKeys } from '../../catalog/hooks/useProducts'
 
 // Query key của chủ đề Sale.
 export const saleKeys = {
   all: ['sales'] as const,
   list: (params: SaleSearchParams) => ['sales', 'list', params] as const,
+  history: (params: SaleSearchParams) => ['sales', 'history', params] as const,
+  detail: (id: string) => ['sales', 'detail', id] as const,
+}
+
+// Danh sách hóa đơn có "Xem thêm" (SC-04): mỗi trang là một lần gọi API, TanStack Query nối các trang lại.
+// Đổi bộ lọc = key mới = bắt đầu lại từ trang 1; giữ danh sách cũ trong lúc tải để màn hình không nháy.
+export function useSaleHistory(params: Omit<SaleSearchParams, 'page'>) {
+  return useInfiniteQuery({
+    queryKey: saleKeys.history(params),
+    queryFn: ({ pageParam, signal }) => searchSales({ ...params, page: pageParam }, signal),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    placeholderData: keepPreviousData,
+  })
+}
+
+// Chi tiết một hóa đơn kèm các lô đã trừ.
+export function useSale(id: string) {
+  return useQuery({
+    queryKey: saleKeys.detail(id),
+    queryFn: ({ signal }) => getSale(id, signal),
+    enabled: id !== '',
+  })
 }
 
 const PENDING: SaleSearchParams = { status: 'pending_payment', pageSize: 20 }

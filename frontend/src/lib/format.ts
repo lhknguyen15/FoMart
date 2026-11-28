@@ -24,3 +24,15 @@ export function formatDateTime(value: string): string {
   const date = new Date(value)
   return `${timeFormat.format(date)} ${dateFormat.format(date)}`
 }
+
+// Ngày hôm nay theo giờ Việt Nam, dạng "yyyy-mm-dd" (giá trị cho <input type="date"> và tham số from/to của API).
+export function todayInVietnam(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+// "cash" → "Tiền mặt", "transfer" → "Chuyển khoản".
+export function formatPaymentMethod(method: 'cash' | 'transfer'): string {
+  return method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'
+}

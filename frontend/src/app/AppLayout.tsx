@@ -1,4 +1,4 @@
-import { PackageIcon, ShoppingCartIcon, SignOutIcon } from '@phosphor-icons/react'
+import { PackageIcon, ReceiptIcon, ShoppingCartIcon, SignOutIcon } from '@phosphor-icons/react'
 import { NavLink, Outlet } from 'react-router'
 import { useLogout } from '../features/auth/hooks/useAuth'
 import { useStoreSettings } from '../features/store/hooks/useStore'
@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/useAuthStore'
 // Các màn hình chính trên thanh điều hướng (thêm báo cáo, danh mục... khi có).
 const navItems = [
   { to: '/', label: 'Bán hàng', Icon: ShoppingCartIcon },
+  { to: '/hoa-don', label: 'Hóa đơn', Icon: ReceiptIcon },
   { to: '/nhap-hang', label: 'Nhập hàng', Icon: PackageIcon },
 ]
 

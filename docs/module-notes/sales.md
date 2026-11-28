@@ -195,3 +195,50 @@ Nhánh `feature/sales-pos-screen` (cùng PR với màn hình bán hàng). UC-05 
   - Payload mẫu (970436, 26.000đ, HD00000012) tự kiểm CRC đúng. Giải ngược mã QR bằng zxing-wasm ra đúng payload.
   - API: không token → 401; có token → 200 (dữ liệu seed). Xóa tạm `bank_bin` → 404 kèm thông báo, rồi khôi phục.
   - `npm run build` + `npm run lint` sạch; backend build 0 cảnh báo.
+
+### 28/11/2026 – Màn hình Hóa đơn (SC-04, UC-06)
+
+Nhánh `feature/sales-invoice-list`. UC-05, UC-06, BR-03, BR-04, BR-07, BR-08. Backend không đổi, dùng `GET /api/sales`, `GET /api/sales/{id}`, `POST /api/sales/{id}/cancel`.
+
+**File mới**
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `features/sales/pages/SaleListPage.tsx` | `/hoa-don`: lọc theo ngày (mặc định hôm nay, giờ VN), trạng thái, hình thức, mã hóa đơn (gõ mã thì tìm mọi ngày); "Xem thêm" theo trang |
+| `features/sales/pages/SaleDetailPage.tsx` | `/hoa-don/:id`: tổng, hình thức, tiền khách đưa / thối, người bán, các dòng (giá lúc bán, lô đã trừ, HSD), giá vốn + lãi cho người được xem; chờ CK thì hiện mã QR + "Đã nhận tiền"; chủ tiệm hủy hóa đơn đã thanh toán |
+| `features/sales/components/CancelSaleForm.tsx`, `schemas/cancelSaleSchema.ts` | Hủy hóa đơn kèm lý do (1–300 ký tự) |
+| `features/sales/components/SaleStatusBadge.tsx` | Nhãn trạng thái có chữ, không chỉ màu |
+
+**File sửa**
+
+| Đường dẫn | Thay đổi |
+| --- | --- |
+| `frontend/src/api/sales.ts` | `getSale`; `SaleSearchParams` thêm `keyword`, `from`, `to` |
+| `features/sales/hooks/useSales.ts` | `saleKeys.history`, `saleKeys.detail`; `useSaleHistory` (`useInfiniteQuery`), `useSale` |
+| `features/sales/components/PendingSales.tsx` | Prop `onlyId`: trang chi tiết chỉ hiện đúng hóa đơn đang xem |
+| `features/sales/pages/SalePage.tsx` | Kết quả vừa bán có link "Xem hóa đơn" |
+| `frontend/src/lib/format.ts` | `todayInVietnam()` (yyyy-mm-dd theo giờ VN), `formatPaymentMethod()` |
+| `frontend/src/app/router.tsx`, `AppLayout.tsx` | Route `/hoa-don`, `/hoa-don/:id` tải lười; tab "Hóa đơn" |
+| `CLAUDE.md` | Trạng thái |
+
+**Ghi chú**
+
+- **Quyết định:**
+  - **"Xem thêm" thay cho phân trang số:** bấm một chạm trên điện thoại. `useInfiniteQuery` giữ các trang đã tải; đổi bộ lọc thì bắt đầu lại từ trang 1.
+  - **Gõ mã thì tìm mọi ngày:** khách quay lại hỏi hóa đơn hôm trước thường đọc mã in trên hóa đơn.
+  - **Mọi mutation bán hàng làm mới `['sales']`**, nên danh sách và chi tiết tự cập nhật sau khi hủy / xác nhận.
+  - **Chưa tính được lãi:** chủ tiệm thấy dòng giải thích (lô tạm / hàng chưa khai báo) thay vì ô trống.
+- **Lỗi phát hiện:**
+  1. `react-refresh/only-export-components`: file component không được export hằng số; nhãn hình thức thanh toán chuyển sang `lib/format.ts`.
+  2. Một lệnh `sed` thay `paymentText[...]` không khớp vì dấu chấm trong `sale.paymentMethod`; tsc báo lỗi, đã sửa bằng Edit.
+- **Hạn chế:**
+  - Chưa lọc theo nhân viên (`GET /api/users` chỉ cho chủ tiệm; làm cùng báo cáo).
+  - Chưa có tổng doanh thu theo ngày trên màn hình (thuộc báo cáo UC-10).
+  - Trang chi tiết của hóa đơn chờ CK chỉ hiện QR nếu hóa đơn nằm trong 20 hóa đơn chờ mới nhất.
+- **Test:** `npm run build` + `npm run lint` sạch. Kịch bản HTTP qua proxy Vite trên database tạm `FoMart_SaleTest` (đã xóa): 20/22 qua.
+  - Hai kịch bản không qua là kỳ vọng sai của script, đúng nghiệp vụ:
+    - hóa đơn chuyển khoản chưa trừ kho trước khi "Đã nhận";
+    - hàng seed nằm ở Kho sau nên bán trừ vào lô tạm, giá vốn null (BR-01, BR-18 để sau).
+  - Đã kiểm: lọc hôm nay / hôm qua / chờ CK / tiền mặt / đã hủy; hai trang không trùng nhau, mới nhất trước; tìm theo mã (cả chữ thường); chi tiết có lô đã trừ; nhân viên không thấy giá vốn; id không có → 404.
+  - Hủy: nhân viên hủy hóa đơn đã thanh toán 403; chủ tiệm hủy → tồn cộng lại đúng 2 lon; hủy lần 2 → 409; lý do trống → 400.
+  - Xác nhận chuyển khoản từ trang chi tiết; đối soát sổ kho rỗng.

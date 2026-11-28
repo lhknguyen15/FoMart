@@ -86,9 +86,13 @@ export interface SaleListItemResponse {
   paidAt: string | null
 }
 
+// from / to: ngày bán theo giờ Việt Nam, dạng "yyyy-mm-dd" (gồm cả ngày to).
 export interface SaleSearchParams {
+  keyword?: string
   status?: SaleStatus
   paymentMethod?: PaymentMethod
+  from?: string
+  to?: string
   page?: number
   pageSize?: number
 }
@@ -114,10 +118,19 @@ export async function cancelSale(id: string, reason: string): Promise<SaleRespon
 // GET /api/sales: danh sách hóa đơn (ở màn hình bán hàng: các hóa đơn chờ chuyển khoản).
 export async function searchSales(params: SaleSearchParams, signal?: AbortSignal): Promise<PagedResult<SaleListItemResponse>> {
   const query = new URLSearchParams()
+  if (params.keyword) query.set('keyword', params.keyword)
   if (params.status) query.set('status', params.status)
   if (params.paymentMethod) query.set('paymentMethod', params.paymentMethod)
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
   if (params.page) query.set('page', String(params.page))
   if (params.pageSize) query.set('pageSize', String(params.pageSize))
   const response = await request<PagedResult<SaleListItemResponse>>(`/api/sales?${query.toString()}`, { signal })
+  return response.dataResponse
+}
+
+// GET /api/sales/{id}: chi tiết hóa đơn kèm các lô đã trừ. Nhân viên không thấy giá vốn, lãi (costHidden, BR-08).
+export async function getSale(id: string, signal?: AbortSignal): Promise<SaleResponse> {
+  const response = await request<SaleResponse>(`/api/sales/${id}`, { signal })
   return response.dataResponse
 }
