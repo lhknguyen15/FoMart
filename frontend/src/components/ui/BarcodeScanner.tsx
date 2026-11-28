@@ -1,9 +1,9 @@
 import { FlashlightIcon } from '@phosphor-icons/react'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { ZxingWasm } from '../../../lib/barcodeDetector'
+import { ZxingWasm } from '../../lib/barcodeDetector'
 
-// Camera quét liên tục bằng zxing-cpp WebAssembly (ADR-0003). Tải lười: SalePage import component này bằng React.lazy,
-// nên mã quét và file .wasm chỉ tải khi người bán bật camera.
+// Camera quét liên tục bằng zxing-cpp WebAssembly (ADR-0003). Tải lười: ScanPanel import component này bằng React.lazy,
+// nên mã quét và file .wasm chỉ tải khi bật camera.
 
 interface BarcodeScannerProps {
   onCode: (code: string) => void

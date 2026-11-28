@@ -1,38 +1,18 @@
-import { CameraIcon, CameraSlashIcon, CheckCircleIcon, ImageIcon, WarningIcon } from '@phosphor-icons/react'
-import { lazy, Suspense, useState, type ChangeEvent } from 'react'
+import { CheckCircleIcon, WarningIcon } from '@phosphor-icons/react'
+import { useState } from 'react'
 import type { PaymentMethod, SaleResponse } from '../../../api/sales'
 import { ApiError } from '../../../api/types'
+import { ScanPanel } from '../../../components/ui/ScanPanel'
 import { scanFeedback, unlockAudio } from '../../../lib/feedback'
 import { formatMoney } from '../../../lib/format'
 import { cartTotal, useCartStore } from '../../../stores/useCartStore'
+import { ProductPicker } from '../../catalog/components/ProductPicker'
 import { useBarcodeLookup } from '../../catalog/hooks/useProducts'
 import { CartList } from '../components/CartList'
 import { CheckoutBar } from '../components/CheckoutBar'
-import { KeyboardScanner } from '../components/KeyboardScanner'
 import { PendingSales } from '../components/PendingSales'
-import { ProductSearch } from '../components/ProductSearch'
 import { UndeclaredItemForm } from '../components/UndeclaredItemForm'
 import { useCreateSale } from '../hooks/useSales'
-
-// Camera quét tải lười: mã quét + file .wasm (~400 KB) chỉ tải khi bật camera (ADR-0003).
-const BarcodeScanner = lazy(() => import('../components/BarcodeScanner').then((module) => ({ default: module.BarcodeScanner })))
-
-// Máy nhớ người bán đã bật camera: lần sau mở màn hình là camera bật sẵn (UC-05 bước 1), quyền camera đã cấp từ lần đầu.
-const CAMERA_PREF_KEY = 'fomart-camera-on'
-function readCameraPref(): boolean {
-  try {
-    return localStorage.getItem(CAMERA_PREF_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-function writeCameraPref(on: boolean): void {
-  try {
-    localStorage.setItem(CAMERA_PREF_KEY, on ? '1' : '0')
-  } catch {
-    // Trình duyệt chặn lưu: lần sau bấm bật lại.
-  }
-}
 
 // Kết quả lần quét / chọn gần nhất, hiện ngay dưới camera (DESIGN.md: Scan Result Card).
 type Notice =
@@ -52,12 +32,6 @@ export function SalePage() {
   const lookup = useBarcodeLookup()
   const createSale = useCreateSale()
 
-  const [cameraOn, setCameraOnState] = useState(readCameraPref)
-  const setCameraOn = (on: boolean) => {
-    writeCameraPref(on)
-    setCameraOnState(on)
-  }
-  const [cameraError, setCameraError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [undeclaredFor, setUndeclaredFor] = useState<{ code?: string } | null>(null)
   const [outcome, setOutcome] = useState<SaleResponse | null>(null)
@@ -85,20 +59,6 @@ export function SalePage() {
       scanFeedback('warn')
       if (error instanceof ApiError && error.status === 404) setNotice({ kind: 'missing', code: raw.trim() })
       else setNotice({ kind: 'blocked', message: error instanceof ApiError ? error.message : 'Không tra được mã.' })
-    }
-  }
-
-  // Chụp ảnh bằng app camera gốc khi quét trực tiếp không được (chỗ tối, chai tròn).
-  const readPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    const { decodeImageFile } = await import('../../../lib/barcodeDetector')
-    const result = await decodeImageFile(file).catch(() => null)
-    if (result?.code) await handleCode(result.code)
-    else {
-      scanFeedback('warn')
-      setNotice({ kind: 'blocked', message: 'Không thấy mã vạch trong ảnh. Chụp gần hơn, đủ sáng, mã nằm ngang.' })
     }
   }
 
@@ -138,50 +98,10 @@ export function SalePage() {
 
   return (
     <div onPointerDown={unlockAudio} className="grid gap-4 pb-[calc(13.5rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_24rem] lg:pb-4">
-      <KeyboardScanner onCode={(code) => void handleCode(code)} />
       <h1 className="sr-only">Bán hàng</h1>
 
       <div className="flex min-w-0 flex-col gap-4">
-        <section aria-label="Quét mã" className="flex flex-col gap-2">
-          {cameraOn ? (
-            <Suspense fallback={<div className="flex aspect-4/3 max-h-[38dvh] items-center justify-center rounded-xl bg-ink text-white">Đang bật camera…</div>}>
-              <BarcodeScanner
-                onCode={(code) => void handleCode(code)}
-                onError={(message) => {
-                  setCameraError(message)
-                  setCameraOn(false)
-                }}
-              />
-            </Suspense>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                unlockAudio()
-                setCameraError(null)
-                setCameraOn(true)
-              }}
-              className="flex h-28 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-600 bg-brand-50 font-semibold text-brand-700 active:bg-brand-100"
-            >
-              <CameraIcon size="2rem" weight="duotone" aria-hidden="true" />
-              Bật camera quét mã
-            </button>
-          )}
-          {cameraError && <p className="text-sm font-semibold text-bad">{cameraError}</p>}
-          <div className="flex gap-2">
-            {cameraOn && (
-              <button type="button" onClick={() => setCameraOn(false)} className="flex min-h-11 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-semibold">
-                <CameraSlashIcon size="1.125rem" aria-hidden="true" />
-                Tắt camera
-              </button>
-            )}
-            <label className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-semibold has-focus-visible:outline-2 has-focus-visible:outline-brand-500">
-              <ImageIcon size="1.125rem" aria-hidden="true" />
-              Chụp ảnh mã
-              <input type="file" accept="image/*" capture="environment" onChange={(event) => void readPhoto(event)} className="sr-only" />
-            </label>
-          </div>
-        </section>
+        <ScanPanel onCode={(code) => void handleCode(code)} />
 
         <div aria-live="polite">
           {notice?.kind === 'added' && (
@@ -229,11 +149,14 @@ export function SalePage() {
           />
         )}
 
-        <ProductSearch
+        <ProductPicker
+          inputId="sale-search"
           onBarcode={(code) => void handleCode(code)}
-          onAdd={(item) => {
-            addDeclared(item)
-            setNotice({ kind: 'added', name: item.productName, unit: item.unitName, price: item.unitPrice })
+          describeItem={(item) => `${item.baseUnitName} · ${formatMoney(item.baseSalePrice)} · tồn ${item.totalStock}`}
+          describeUnit={(unit) => formatMoney(unit.salePrice)}
+          onPick={(product, unit) => {
+            addDeclared({ unitId: unit.id, productName: product.name, unitName: unit.name, unitPrice: unit.salePrice })
+            setNotice({ kind: 'added', name: product.name, unit: unit.name, price: unit.salePrice })
           }}
         />
         {!undeclaredFor && (

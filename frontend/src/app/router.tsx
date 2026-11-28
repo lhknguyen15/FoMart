@@ -18,6 +18,9 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <SalePage /> },
+      // Nhập hàng tải lười theo route: màn hình bán hàng (mở nhiều nhất) không phải tải phần này.
+      { path: 'nhap-hang', lazy: async () => ({ Component: (await import('../features/purchasing/pages/ReceiptListPage')).ReceiptListPage }) },
+      { path: 'nhap-hang/:id', lazy: async () => ({ Component: (await import('../features/purchasing/pages/ReceiptPage')).ReceiptPage }) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
